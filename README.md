@@ -6,7 +6,7 @@ Built by James Keith Harwood II and Claude Sentinel (Anthropic) — a Sentinel A
 
 ![SLV UFO Sighting Map](report.png)
 
-[View the Live Map](https://jkh2.github.io/simple-SLV-UFO-MAP)
+Try it (https://jkh2.github.io/simple-SLV-UFO-MAP)
 ---
 
 ## What Is This?
