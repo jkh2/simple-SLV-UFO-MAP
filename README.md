@@ -68,7 +68,7 @@ The v1 of this project included a user-submission form allowing valley residents
 No build step. No dependencies to install. It's a single HTML file.
 
 ```bash
-git clone https://github.com/jkh2/SLV-UFO-MAP-V2
+git clone https://github.com/jkh2/simple-SLV-UFO-MAP-V2
 cd SLV-UFO-MAP-V2
 # Open index.html in any modern browser
 ```
