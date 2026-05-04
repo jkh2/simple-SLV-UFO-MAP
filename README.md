@@ -69,7 +69,7 @@ No build step. No dependencies to install. It's a single HTML file.
 
 ```bash
 git clone https://github.com/jkh2/simple-SLV-UFO-MAP-V2
-cd SLV-UFO-MAP-V2
+cd simple-SLV-UFO-MAP-V2
 # Open index.html in any modern browser
 ```
 
