@@ -4,6 +4,7 @@
 
 Built by James Keith Harwood II and Claude Sentinel (Anthropic) — a Sentinel AI Systems production.
 
+![SLV UFO Sighting Map](report.png)
 ---
 
 ## What Is This?
