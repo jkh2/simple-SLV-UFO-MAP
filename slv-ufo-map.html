@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SLV UFO Sighting Map — Sentinel AI Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+:root{
+  --red:#ff2a2a; --red-glow:rgba(255,60,60,0.9); --red-dim:rgba(255,42,42,0.12);
+  --red-mid:rgba(255,42,42,0.35); --gold:#ffb347; --cyan:#00d4ff;
+  --dark:#020409; --panel:rgba(3,8,20,0.93); --border:rgba(255,42,42,0.22);
+  --text:#c8d8e8; --mono:'Share Tech Mono',monospace; --ui:'Rajdhani',sans-serif; --title:'Orbitron',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#020409;font-family:var(--ui)}
+#map{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1}
+
+/* ── STAR CANVAS ── */
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* ── OVERLAYS ── */
+#vignette{
+  position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse 120% 90% at 50% 60%,transparent 35%,rgba(2,4,9,0.72) 100%);
+}
+#scan-line{
+  position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+}
+
+/* ── TOP HUD ── */
+#hud{
+  position:fixed;top:0;left:0;right:0;height:52px;z-index:20;
+  background:linear-gradient(180deg,rgba(2,4,9,0.97) 0%,rgba(2,4,9,0) 100%);
+  display:flex;align-items:center;padding:0 20px;gap:18px;
+  border-bottom:1px solid rgba(255,42,42,0.12);
+}
+#hud-title{
+  font-family:var(--title);font-size:12px;font-weight:700;letter-spacing:3px;
+  color:var(--red-glow);text-shadow:0 0 18px var(--red),0 0 36px rgba(255,42,42,0.3);
+  white-space:nowrap;
+}
+.hud-sep{width:1px;height:24px;background:linear-gradient(180deg,transparent,var(--border),transparent)}
+#hud-meta{font-family:var(--mono);font-size:9px;color:rgba(200,216,232,0.35);letter-spacing:1.5px}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--red);
+  box-shadow:0 0 8px var(--red),0 0 16px rgba(255,42,42,0.4);
+  animation:blink 2.2s infinite;margin-left:auto;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+#hud-count{font-family:var(--mono);font-size:9px;color:rgba(200,216,232,0.4);letter-spacing:1px}
+
+/* ── SEARCH ── */
+#search-wrap{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);
+  z-index:20;width:380px;max-width:calc(100vw - 40px);
+}
+#search-input{
+  width:100%;background:rgba(2,6,16,0.9);
+  border:1px solid var(--border);border-radius:2px;
+  padding:10px 36px 10px 40px;
+  font-family:var(--mono);font-size:11px;color:var(--text);letter-spacing:1px;
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  box-shadow:0 4px 30px rgba(0,0,0,0.5),0 0 0 0 var(--red);
+}
+#search-input:focus{
+  border-color:rgba(255,42,42,0.55);
+  box-shadow:0 4px 30px rgba(0,0,0,0.5),0 0 20px rgba(255,42,42,0.15);
+}
+#search-input::placeholder{color:rgba(200,216,232,0.22)}
+#search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,42,42,0.5);font-size:15px;pointer-events:none}
+#search-clear{
+  position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  color:rgba(255,42,42,0.4);cursor:pointer;font-size:18px;display:none;
+  line-height:1;font-family:var(--mono);transition:color .15s;
+}
+#search-clear:hover{color:var(--red)}
+#search-results{
+  background:rgba(2,6,16,0.97);border:1px solid var(--border);border-top:none;
+  border-radius:0 0 2px 2px;max-height:240px;overflow-y:auto;display:none;
+}
+.sr-item{
+  padding:9px 14px;cursor:pointer;border-bottom:1px solid rgba(255,42,42,0.07);
+  transition:background .12s;
+}
+.sr-item:hover,.sr-item.active{background:rgba(255,42,42,0.1)}
+.sr-loc{font-family:var(--ui);font-size:13px;color:var(--text);font-weight:600}
+.sr-meta{font-family:var(--mono);font-size:9px;color:rgba(200,216,232,0.38);letter-spacing:1px;margin-top:2px}
+.sr-match{color:var(--red-glow)}
+#search-status{
+  font-family:var(--mono);font-size:9px;color:rgba(255,100,100,0.7);
+  letter-spacing:1px;padding:4px 0 0 2px;display:none;
+}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,0.3)}
+::-webkit-scrollbar-thumb{background:rgba(255,42,42,0.3);border-radius:2px}
+
+/* ── FILTER PILLS ── */
+#filters{
+  position:fixed;top:118px;left:50%;transform:translateX(-50%);
+  z-index:20;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;
+  max-width:520px;
+}
+.pill{
+  font-family:var(--mono);font-size:9px;letter-spacing:1px;
+  padding:4px 10px;border-radius:1px;cursor:pointer;
+  border:1px solid rgba(255,42,42,0.2);color:rgba(200,216,232,0.45);
+  background:rgba(2,6,16,0.7);transition:all .15s;white-space:nowrap;
+}
+.pill:hover,.pill.active{
+  background:rgba(255,42,42,0.15);border-color:rgba(255,42,42,0.5);
+  color:var(--red-glow);box-shadow:0 0 12px rgba(255,42,42,0.12);
+}
+
+/* ── DETAIL PANEL ── */
+#panel{
+  position:fixed;right:0;top:52px;bottom:0;width:310px;z-index:20;
+  background:var(--panel);border-left:1px solid var(--border);
+  transform:translateX(102%);transition:transform .38s cubic-bezier(.16,1,.3,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+#panel.open{transform:translateX(0)}
+#panel-inner{flex:1;overflow-y:auto;padding:20px}
+#panel-close{
+  position:absolute;right:12px;top:12px;background:none;
+  border:1px solid var(--border);color:var(--text);cursor:pointer;
+  width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:14px;transition:all .15s;border-radius:1px;z-index:1;
+}
+#panel-close:hover{background:rgba(255,42,42,0.15);border-color:var(--red);color:var(--red)}
+.panel-id{font-family:var(--mono);font-size:9px;color:rgba(255,42,42,0.5);letter-spacing:2px;margin-bottom:8px}
+.panel-title{font-family:var(--title);font-size:11px;font-weight:700;color:var(--red-glow);letter-spacing:2px;line-height:1.5;text-transform:uppercase;padding-right:32px;text-shadow:0 0 14px rgba(255,42,42,0.4)}
+.panel-loc{font-family:var(--ui);font-size:15px;color:var(--text);font-weight:600;margin-top:6px;line-height:1.3}
+.panel-divider{height:1px;background:linear-gradient(90deg,var(--border),transparent);margin:14px 0}
+.panel-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.panel-label{font-family:var(--mono);font-size:9px;color:rgba(200,216,232,0.35);letter-spacing:1.5px}
+.panel-val{font-family:var(--ui);font-size:13px;color:var(--text);font-weight:600;text-align:right;max-width:180px}
+.panel-desc-label{font-family:var(--mono);font-size:9px;color:rgba(200,216,232,0.35);letter-spacing:1.5px;margin-bottom:8px}
+.panel-desc{font-family:var(--ui);font-size:13px;color:rgba(200,216,232,0.75);line-height:1.65;font-weight:300}
+.panel-coords{
+  margin-top:14px;font-family:var(--mono);font-size:9px;
+  color:rgba(200,216,232,0.25);letter-spacing:1px;border-top:1px solid rgba(255,42,42,0.08);padding-top:10px;
+}
+
+/* ── LEGEND ── */
+#legend{
+  position:fixed;bottom:24px;left:20px;z-index:20;
+  background:rgba(2,6,16,0.82);border:1px solid var(--border);
+  border-radius:2px;padding:10px 14px;
+}
+.leg-title{font-family:var(--mono);font-size:8px;color:rgba(200,216,232,0.3);letter-spacing:2px;margin-bottom:8px}
+.leg-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.leg-dot{width:10px;height:10px;border-radius:50%}
+.leg-dot.normal{background:radial-gradient(circle,#ff6060 0%,#ff2a2a 60%);box-shadow:0 0 6px #ff2a2a,0 0 12px rgba(255,42,42,0.4)}
+.leg-dot.glow{background:radial-gradient(circle,#ffffff 0%,#ffaa00 40%,#ff4400 100%);box-shadow:0 0 14px #ffaa00,0 0 28px rgba(255,170,0,0.6)}
+.leg-text{font-family:var(--mono);font-size:9px;color:rgba(200,216,232,0.5)}
+
+/* ── COUNTER BADGE ── */
+#match-badge{
+  position:fixed;bottom:24px;right:20px;z-index:20;
+  background:rgba(2,6,16,0.88);border:1px solid rgba(255,42,42,0.3);
+  border-radius:2px;padding:8px 14px;display:none;
+  font-family:var(--mono);font-size:10px;color:var(--red-glow);letter-spacing:1px;
+  box-shadow:0 0 20px rgba(255,42,42,0.1);
+}
+
+/* ── LEAFLET CUSTOM ── */
+.leaflet-container{background:#020409!important}
+.leaflet-control-zoom{border:1px solid var(--border)!important;background:rgba(2,6,16,0.85)!important}
+.leaflet-control-zoom a{
+  background:transparent!important;color:rgba(200,216,232,0.6)!important;
+  border-color:var(--border)!important;font-family:var(--mono)!important;
+}
+.leaflet-control-zoom a:hover{background:rgba(255,42,42,0.1)!important;color:var(--red-glow)!important}
+.leaflet-control-attribution{display:none}
+.leaflet-popup-content-wrapper{
+  background:rgba(2,6,16,0.95);border:1px solid var(--border);border-radius:2px;
+  color:var(--text);box-shadow:0 0 30px rgba(255,42,42,0.15);padding:0;
+}
+.leaflet-popup-content{margin:0;padding:12px 16px;min-width:180px}
+.leaflet-popup-tip-container{display:none}
+.leaflet-popup-close-button{color:rgba(255,42,42,0.5)!important;font-size:18px!important;top:4px!important;right:6px!important}
+.pop-loc{font-family:var(--ui);font-size:14px;color:var(--text);font-weight:600;padding-right:14px}
+.pop-meta{font-family:var(--mono);font-size:9px;color:rgba(200,216,232,0.4);letter-spacing:1px;margin-top:4px}
+.pop-btn{
+  margin-top:10px;display:block;width:100%;padding:6px;
+  background:rgba(255,42,42,0.12);border:1px solid rgba(255,42,42,0.3);
+  color:var(--red-glow);font-family:var(--mono);font-size:9px;letter-spacing:2px;
+  cursor:pointer;transition:background .15s;text-align:center;text-transform:uppercase;
+}
+.pop-btn:hover{background:rgba(255,42,42,0.22)}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<div id="map"></div>
+<div id="vignette"></div>
+<div id="scan-line"></div>
+
+<!-- TOP HUD -->
+<div id="hud">
+  <div id="hud-title">SLV UFO SIGHTING MAP</div>
+  <div class="hud-sep"></div>
+  <div id="hud-meta">SAN LUIS VALLEY, COLORADO &nbsp;|&nbsp; 1994–2019</div>
+  <div class="hud-sep"></div>
+  <div id="hud-count">107 DOCUMENTED REPORTS</div>
+  <div class="live-dot"></div>
+</div>
+
+<!-- SEARCH -->
+<div id="search-wrap">
+  <div style="position:relative">
+    <span id="search-icon">⌕</span>
+    <input id="search-input" type="text" placeholder="SEARCH BY LOCATION, DATE, SHAPE, KEYWORD...">
+    <span id="search-clear">×</span>
+  </div>
+  <div id="search-results"></div>
+  <div id="search-status"></div>
+</div>
+
+<!-- FILTER PILLS -->
+<div id="filters">
+  <div class="pill" data-filter="disc">DISC</div>
+  <div class="pill" data-filter="light">LIGHT</div>
+  <div class="pill" data-filter="sphere">SPHERE</div>
+  <div class="pill" data-filter="triangle">TRIANGLE</div>
+  <div class="pill" data-filter="cigar">CIGAR</div>
+  <div class="pill" data-filter="fireball">FIREBALL</div>
+  <div class="pill" data-filter="cattle">CATTLE</div>
+  <div class="pill" data-filter="1994">1994</div>
+  <div class="pill" data-filter="1997">1997</div>
+  <div class="pill" data-filter="2000s">2000–2009</div>
+  <div class="pill" data-filter="2010s">2010–2019</div>
+  <div class="pill" data-filter="crestone">CRESTONE</div>
+  <div class="pill" data-filter="alamosa">ALAMOSA</div>
+  <div class="pill" data-filter="baca">BACA</div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div id="panel">
+  <button id="panel-close">×</button>
+  <div id="panel-inner">
+    <div class="panel-id" id="p-id"></div>
+    <div class="panel-title" id="p-shape"></div>
+    <div class="panel-loc" id="p-loc"></div>
+    <div class="panel-divider"></div>
+    <div class="panel-row"><span class="panel-label">DATE</span><span class="panel-val" id="p-date"></span></div>
+    <div class="panel-row"><span class="panel-label">DURATION</span><span class="panel-val" id="p-dur"></span></div>
+    <div class="panel-row"><span class="panel-label">OBSERVERS</span><span class="panel-val" id="p-obs"></span></div>
+    <div class="panel-row"><span class="panel-label">COUNTY</span><span class="panel-val" id="p-county"></span></div>
+    <div class="panel-divider"></div>
+    <div class="panel-desc-label">WITNESS ACCOUNT</div>
+    <div class="panel-desc" id="p-desc"></div>
+    <div class="panel-coords" id="p-coords"></div>
+  </div>
+</div>
+
+<!-- LEGEND -->
+<div id="legend">
+  <div class="leg-title">MARKER KEY</div>
+  <div class="leg-row"><div class="leg-dot normal"></div><span class="leg-text">Documented sighting</span></div>
+  <div class="leg-row"><div class="leg-dot glow"></div><span class="leg-text">Search match</span></div>
+</div>
+
+<!-- MATCH COUNT -->
+<div id="match-badge" id="match-badge"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ════════════════════════════════════════════════
+//  STAR FIELD
+// ════════════════════════════════════════════════
+(function(){
+  const c=document.getElementById('stars'),ctx=c.getContext('2d');
+  function resize(){c.width=window.innerWidth;c.height=window.innerHeight}
+  resize();window.addEventListener('resize',resize);
+  const stars=Array.from({length:260},()=>({
+    x:Math.random(),y:Math.random()*0.55,
+    r:Math.random()*1.1+0.2,o:Math.random()*0.5+0.1,
+    f:Math.random()*0.008+0.003,p:Math.random()*Math.PI*2
+  }));
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    // milky way band
+    const grd=ctx.createLinearGradient(0,0,c.width,c.height*0.5);
+    grd.addColorStop(0,'rgba(180,200,255,0.0)');
+    grd.addColorStop(0.4,'rgba(180,200,255,0.025)');
+    grd.addColorStop(0.6,'rgba(200,180,255,0.03)');
+    grd.addColorStop(1,'rgba(180,200,255,0.0)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,c.width,c.height*0.55);
+    stars.forEach(s=>{
+      const o=s.o*(0.6+0.4*Math.sin(t*s.f+s.p));
+      ctx.beginPath();
+      ctx.arc(s.x*c.width,s.y*c.height,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(210,225,255,${o})`;ctx.fill();
+    });
+    t++;requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ════════════════════════════════════════════════
+//  SIGHTING DATA
+// ════════════════════════════════════════════════
+const SIGHTINGS=[
+  {id:"D001",lat:37.955,lng:-106.143,location:"S of Saguache, CO Hwy 285",date:"June 28, 2019",shape:"Disc",duration:"45–60 sec",observers:"1",county:"Saguache",summary:"Flashing light from Center/Mosca headed NXNW toward Saguache, disc-shaped craft ~40–50ft with bright revolving rim light. Two photographs taken."},
+  {id:"D002",lat:38.175,lng:-105.82,location:"Valley View Hot Springs, near Villa Grove",date:"September 7, 2007",shape:"Star-like",duration:"~2 min",observers:"1",county:"Saguache",summary:"Bright star-like object fixed overhead, appeared to zoom in/out of focus, took on fuzzy comet-like appearance. Faded out after about two minutes. Original jpegs available."},
+  {id:"D003",lat:37.73,lng:-105.56,location:"Zapata Falls State Park",date:"August 17, 2007",shape:"Morphing",duration:"Several min",observers:"1",county:"Alamosa",summary:"Object NW of location, steady course like commercial jet, descended at 30–45°, morphed and changed shape, lost behind mountains. At least 280 feet long. Photographed with Nikon D200."},
+  {id:"D004",lat:38.84,lng:-106.13,location:"Presidential Mtns, W of Buena Vista",date:"November 22, 2002",shape:"Cigar",duration:"~15 sec",observers:"1",county:"Chaffee",summary:"Cigar-shaped object 40–50 miles away, constant 30° above horizon, no movement, no vapor trail. Video showed bar-bell shape connecting main craft with plasma field. Dimmed out slowly."},
+  {id:"D005",lat:37.86,lng:-105.97,location:"W of Moffat, CO",date:"September 12, 2002",shape:"Boomerang",duration:"~3 min",observers:"1",county:"Saguache",summary:"Huge dark boomerang shape with four rows of white rectangular lights moved silently west to east across Highway 17. Span estimated over 200 feet. Blocked out stars as it passed."},
+  {id:"D006",lat:37.94,lng:-105.73,location:"Crestone, CO",date:"July 4, 2002",shape:"Formation",duration:"Extended",observers:"Multiple",county:"Saguache",summary:"July 4th fireworks observers reported additional unexplained lights in formation above Sangre de Cristo mountains. Multiple witnesses. Three objects moved in coordinated pattern unlike any known aircraft."},
+  {id:"D007",lat:37.47,lng:-105.87,location:"Alamosa, CO",date:"March 15, 2002",shape:"Triangle",duration:"~10 min",observers:"3",county:"Alamosa",summary:"Three witnesses report large silent triangular craft with red light at each apex hovering over the east side of Alamosa. Object rotated slowly then accelerated south toward New Mexico border."},
+  {id:"D008",lat:37.58,lng:-106.05,location:"Monte Vista, CO",date:"October 8, 2001",shape:"Oval",duration:"~5 min",observers:"2",county:"Rio Grande",summary:"Bright oval object hovered over grain elevators. Two separate witnesses. Object emitted pulsing orange-white light, then departed straight up at tremendous speed leaving faint glowing trail."},
+  {id:"D009",lat:37.68,lng:-106.35,location:"Del Norte, CO",date:"August 22, 2001",shape:"Disc",duration:"~8 min",observers:"4",county:"Rio Grande",summary:"Family of four observed disc-shaped craft with rotating colored lights descend toward Rio Grande river then follow the river south at low altitude. No sound. Metallic surface clearly visible."},
+  {id:"D010",lat:38.05,lng:-105.92,location:"Near Center, CO",date:"May 3, 2001",shape:"Light",duration:"~1 hr",observers:"2",county:"Saguache",summary:"Stationary white light over potato field for over an hour. Witnesses attempted to drive toward it. Light maintained exact distance regardless of their movement. Departed suddenly vertically."},
+  {id:"D011",lat:37.94,lng:-105.72,location:"Baca Grande, near Crestone",date:"December 14, 2000",shape:"Sphere",duration:"~20 min",observers:"1",county:"Saguache",summary:"Large luminous sphere drifted slowly from south to north along the Sangre de Cristo foothills. Brilliant white with slight blue tinge. No sound. Estimated 40 feet in diameter. Vanished abruptly."},
+  {id:"D012",lat:37.66,lng:-106.04,location:"Blanca, CO",date:"October 30, 2000",shape:"Fireball",duration:"3–4 sec",observers:"Multiple",county:"Costilla",summary:"Multiple witnesses across valley report large blue-green fireball that descended slowly then stopped in mid-air, hovered for several seconds, then shot horizontally north at tremendous speed."},
+  {id:"D013",lat:37.47,lng:-105.86,location:"Alamosa County Airport area",date:"August 11, 2000",shape:"Unknown",duration:"~12 min",observers:"2",county:"Alamosa",summary:"Two witnesses near airport observed object tracking commercial aircraft from behind. Object was darker than surrounding sky but visible by edge lighting. Peeled away north before reaching airport."},
+  {id:"D014",lat:37.95,lng:-105.71,location:"N. Crestone valley",date:"June 6, 2000",shape:"Disc",duration:"~4 min",observers:"1",county:"Saguache",summary:"Classic saucer shape, metallic, sun glinting off upper dome. Hovered motionless for several minutes above treeline on the Sangres. Tilted at angle, then departed straight up at incredible speed."},
+  {id:"D015",lat:38.13,lng:-105.87,location:"Villa Grove, CO",date:"February 18, 2000",shape:"Light",duration:"~45 min",observers:"3",county:"Saguache",summary:"Three family members watch brilliant stationary light over Poncha Pass area for 45 minutes. Light changed color slowly — white to amber to red. Disappeared the instant a vehicle headlight pointed at it."},
+  {id:"D016",lat:37.57,lng:-106.08,location:"Monte Vista Wildlife Refuge",date:"November 12, 1999",shape:"Triangle",duration:"~15 min",observers:"2",county:"Rio Grande",summary:"Two wildlife refuge workers observed large triangular craft passing silently over the wetlands. Three white lights at corners, red pulsing light at center underside. Geese on refuge panicked as it passed."},
+  {id:"D017",lat:37.87,lng:-105.74,location:"Baca Ranch south boundary",date:"September 3, 1999",shape:"Unknown",duration:"~8 min",observers:"1",county:"Saguache",summary:"Rancher reports large dark object with no lights hovering over cattle. Cattle stampeded. Found next morning: one Hereford cow had been mutilated in the classic fashion. No tracks anywhere near the carcass."},
+  {id:"D018",lat:37.74,lng:-106.19,location:"W of Center, CO",date:"July 20, 1999",shape:"Cylinder",duration:"~3 min",observers:"1",county:"Saguache",summary:"Pilot reports metallic cylinder pacing his small aircraft at 9,500 feet. Object matched his speed and altitude for approximately three minutes, then instantly disappeared. FAA report filed."},
+  {id:"D019",lat:38.12,lng:-106.24,location:"Over Cochetopa Hills",date:"May 30, 1999",shape:"Formation",duration:"~20 min",observers:"4",county:"Saguache",summary:"Four witnesses at campsite observe five orange lights in V-formation traverse the entire width of the valley from east to west in near-complete silence. Formation maintained perfect spacing throughout."},
+  {id:"D020",lat:37.46,lng:-105.95,location:"Alamosa, south of town",date:"March 26, 1999",shape:"Disc",duration:"~6 min",observers:"6",county:"Alamosa",summary:"Six people at a cookout observe a disc-shaped object with brilliant ring of white lights hover directly overhead. No sound. Object descended to approximately 300 feet before departing south at high speed."},
+  {id:"D021",lat:37.86,lng:-105.72,location:"Baca Grande, Crestone area",date:"January 14, 1999",shape:"Oval",duration:"~30 min",observers:"2",county:"Saguache",summary:"Two Baca Grande residents observe amber oval light low over the valley floor, maneuvering intelligently. Object reacted to flashlight signals — mimicking flash patterns from witnesses on the ground."},
+  {id:"D022",lat:37.03,lng:-105.61,location:"W of Mesita, CO",date:"September 11, 1997",shape:"Large craft (dual)",duration:"~40 min",observers:"2",county:"Costilla",summary:"Two large craft each with row of six whitish-orange lights, moving in unison. Each longer than a C-131 transport. Drifted south, stopped at border, headed back north, then west across SLV. Never faster than 40 mph."},
+  {id:"D023",lat:37.88,lng:-105.73,location:"Baca Grande Development",date:"September 12, 1997",shape:"Large craft",duration:"Extended",observers:"2",county:"Saguache",summary:"Huge craft hovering over center/NE of San Luis Valley. Unblinking red and green lights arrayed around object. Separate report of bluish firework descending between vantage and the Sangres."},
+  {id:"D024",lat:37.03,lng:-105.93,location:"Rio Grande River at CO/NM Border",date:"August 22, 1997",shape:"Light/Globe",duration:"~10 min",observers:"3",county:"Conejos",summary:"Two lights like huge car headlights intermittently visible in thunderhead to west. Large golden light low to south by border. Witness Thomas Peay later reported three nights of vivid dreams involving being taken aboard a craft."},
+  {id:"D025",lat:38.15,lng:-105.95,location:"N of Villa Grove, near Poncha Pass",date:"June 20, 1997",shape:"Convoy",duration:"N/A",observers:"1",county:"Saguache",summary:"Convoy of all-white vans and vehicles seen by rancher hauling cattle, headed out of Valley on Highway 17 north of Villa Grove at 2:00 AM. No markings. Uniformed personnel visible in lead vehicles."},
+  {id:"D026",lat:37.47,lng:-105.88,location:"NW of Alamosa, CO",date:"June 17, 1997",shape:"Convoy",duration:"N/A",observers:"1",county:"Alamosa",summary:"All-white convoys of vans, Suburbans and trucks — 10–12 vehicles with State Patrol rear-escort — headed into Alamosa the back way during predawn hours. No explanation offered when witnessed questioned police."},
+  {id:"D027",lat:38.15,lng:-105.82,location:"Near Villa Grove, CO",date:"June 13, 1997",shape:"Light",duration:"Extended",observers:"1",county:"Saguache",summary:"Reddish flashing blue light, slightly bigger than a planet, hovering NW part of Valley. Stayed stationary for over an hour. Atmospheric distortion ruled out. Similar light seen by other witnesses same night."},
+  {id:"D028",lat:37.48,lng:-105.87,location:"1 mile N of Alamosa, Hwy 17",date:"June 7, 1997",shape:"Unknown vehicle",duration:"N/A",observers:"1",county:"Alamosa",summary:"Unmarked brand-new Ford F-350 with space-gun-looking device mounted on truck bed, meandering up and down driveways near an irrigation pond area north of Alamosa at 1:15 AM."},
+  {id:"D029",lat:38.08,lng:-105.88,location:"Moffat area, CO",date:"June 3, 1997",shape:"Large craft",duration:"~5 min",observers:"1",county:"Saguache",summary:"Witness driving on back road sees enormous craft — three times the size of a commercial jetliner — moving at near-zero speed at 500 feet altitude. Brilliant white lights illuminated crop circle pattern visible below."},
+  {id:"D030",lat:37.94,lng:-105.72,location:"Crestone, CO",date:"May 28, 1997",shape:"Sphere",duration:"~10 min",observers:"2",county:"Saguache",summary:"Two Crestone spiritual center residents observe a large metallic sphere descend from clouds, hover for ten minutes making no sound, then ascend back into overcast at high speed. Diameter estimated at 60 feet."},
+  {id:"D031",lat:37.67,lng:-105.93,location:"South of Hooper, CO",date:"May 15, 1997",shape:"Triangle",duration:"~8 min",observers:"3",county:"Alamosa",summary:"Three witnesses report black triangular craft with five white lights on leading edge and one red light trailing. Object moved directly over their vehicle on Highway 17. Engine sputtered during overflight."},
+  {id:"D032",lat:37.85,lng:-105.85,location:"Center, CO area",date:"April 22, 1997",shape:"Formation",duration:"~12 min",observers:"5",county:"Saguache",summary:"Five agricultural workers observe four bright lights in diamond formation pass slowly east to west at approximately 2,000 feet altitude. Objects then suddenly reversed direction without slowing. No sound heard."},
+  {id:"D033",lat:37.46,lng:-106.17,location:"Alamosa, SW edge",date:"March 8, 1997",shape:"Disc",duration:"~4 min",observers:"1",county:"Alamosa",summary:"Witness returning from night shift observes silver disc at low altitude trailing sparks or plasma from underside. Object banked toward La Jara and accelerated out of sight in under three seconds."},
+  {id:"D034",lat:37.94,lng:-105.71,location:"Crestone Needle area",date:"January 28, 1997",shape:"Light",duration:"~2 hrs",observers:"Multiple",county:"Saguache",summary:"Multiple Crestone residents reported a brilliant stationary light above the Needle for almost two hours during a clear winter night. Binoculars revealed the light had structural features — not a star."},
+  {id:"D035",lat:37.73,lng:-106.34,location:"Near Del Norte, CO",date:"December 3, 1996",shape:"Cigar",duration:"~6 min",observers:"2",county:"Rio Grande",summary:"Two hunters observe elongated cigar-shaped craft at low altitude moving south over the Rio Grande gorge. Object appeared to scan terrain with a sweeping beam of yellowish light before departing over mountains."},
+  {id:"D036",lat:37.92,lng:-105.73,location:"Crestone, east face of Sangres",date:"October 17, 1996",shape:"Sphere",duration:"~15 min",observers:"3",county:"Saguache",summary:"Three witnesses watch glowing sphere emerge from behind the Sangre de Cristos, traverse the valley east to west, then descend near the Great Sand Dunes area. No sound. Brilliant amber coloring."},
+  {id:"D037",lat:37.73,lng:-105.51,location:"Great Sand Dunes National Monument",date:"August 30, 1996",shape:"Light formation",duration:"~25 min",observers:"Multiple",county:"Alamosa",summary:"Campers at Great Sand Dunes report five lights that slowly rotated in formation above the dunes for 25 minutes. Lights changed from white to red to green. Park ranger corroborated the report."},
+  {id:"D038",lat:38.08,lng:-106.15,location:"Near Saguache, CO",date:"July 4, 1996",shape:"Fireball",duration:"~8 sec",observers:"Many",county:"Saguache",summary:"During July 4th celebrations, an enormous green fireball passed low over Saguache heading south. Dozens of witnesses. Object left a glowing green trail that persisted for nearly 30 seconds after passage."},
+  {id:"D039",lat:37.87,lng:-105.73,location:"Baca Ranch, cattle pasture",date:"June 12, 1996",shape:"Unknown",duration:"N/A",observers:"1",county:"Saguache",summary:"Rancher discovers third cattle mutilation in four months. No footprints. No tire tracks. No blood on ground despite massive blood loss evident from carcass. Classic precision cuts on soft tissue and organs."},
+  {id:"D040",lat:37.57,lng:-106.08,location:"Monte Vista, CO",date:"May 6, 1996",shape:"Disc",duration:"~7 min",observers:"4",county:"Rio Grande",summary:"Four witnesses including a retired military officer observe a domed disc over Monte Vista moving west to east. Object came to complete stop, hovered two minutes, then reversed course without turning."},
+  {id:"D041",lat:37.84,lng:-106.18,location:"Between Alamosa and Monte Vista",date:"March 22, 1996",shape:"Triangle",duration:"~18 min",observers:"2",county:"Alamosa",summary:"Couple driving Highway 160 encounter large triangular craft pacing their vehicle at 65 mph for 18 minutes. Three white lights at corners, single red pulsing light on belly. Object departed suddenly upward."},
+  {id:"D042",lat:38.07,lng:-105.86,location:"E of Moffat, CO",date:"February 10, 1996",shape:"Large craft",duration:"~9 min",observers:"1",county:"Saguache",summary:"Truck driver observes craft of extraordinary size — estimated 600 feet or more — moving due north at 200 feet altitude in near silence. Row of brilliant amber lights illuminated surrounding terrain below."},
+  {id:"D043",lat:37.72,lng:-106.05,location:"N of Monte Vista, CO",date:"January 6, 1996",shape:"Sphere",duration:"~6 min",observers:"3",county:"Rio Grande",summary:"Three farm workers observe chrome-colored sphere hovering over potato cellar. Object tilted, emitting beam of bluish-white light into the cellar ventilation opening. Departed northeast at high speed."},
+  {id:"D044",lat:37.94,lng:-105.72,location:"Crestone, CO",date:"December 21, 1995",shape:"Light array",duration:"~30 min",observers:"Multiple",county:"Saguache",summary:"Winter solstice gathering at spiritual center disrupted when eight red-orange lights appeared in formation above the Sangres. Lights pulsed in synchrony, arranged in two rows of four. No sound at all."},
+  {id:"D045",lat:37.52,lng:-106.06,location:"Alamosa, E edge near Blanca",date:"November 8, 1995",shape:"Disc",duration:"~5 min",observers:"1",county:"Alamosa",summary:"Early morning witness observes silver disc-shaped craft at low altitude approaching from the direction of Blanca Peak. Object hovered over Highway 160 before accelerating out of sight toward the west."},
+  {id:"D046",lat:37.89,lng:-105.73,location:"Baca Grande, CO",date:"October 4, 1995",shape:"Formation",duration:"~15 min",observers:"5",county:"Saguache",summary:"Five Baca Grande residents watch three amber globes execute precise geometric flight patterns over the valley for 15 minutes. Patterns included right angle turns and direction reversals with no deceleration."},
+  {id:"D047",lat:37.67,lng:-106.08,location:"Blanca, CO",date:"September 19, 1995",shape:"Oval",duration:"~4 min",observers:"2",county:"Costilla",summary:"Two witnesses report oval craft with dome top flying low over Highway 160 west of Blanca Peak. Object appeared to be surveying terrain with optical equipment visible beneath fuselage."},
+  {id:"D048",lat:38.15,lng:-105.82,location:"Villa Grove, CO",date:"August 27, 1995",shape:"Triangle",duration:"~20 min",observers:"1",county:"Saguache",summary:"Lone witness on camping trip observes massive triangular craft hovering over Poncha Pass for 20 minutes. Complete silence. No aircraft could be seen or heard in the area at the time."},
+  {id:"D049",lat:37.55,lng:-105.78,location:"Fort Garland, CO",date:"July 14, 1995",shape:"Sphere",duration:"~10 min",observers:"4",county:"Costilla",summary:"Four campers at Fort Garland see bright sphere descend toward Blanca Peak, hover against the mountain face, then shoot straight up out of sight. Object was brilliant white, estimated 30 feet in diameter."},
+  {id:"D050",lat:37.74,lng:-106.19,location:"Center, CO, irrigation area",date:"June 30, 1995",shape:"Disc",duration:"~8 min",observers:"2",county:"Saguache",summary:"Two potato farmers observe disc-shaped craft hovering over irrigation pivot system at 500 feet altitude. Craft appeared to be directing beam downward into the field. Left circular imprint in crop."},
+  {id:"D051",lat:37.94,lng:-105.71,location:"Crestone, CO",date:"June 2, 1995",shape:"Formation",duration:"~12 min",observers:"6",county:"Saguache",summary:"Six residents observe five triangular objects in V-formation pass directly over Crestone heading north. Each object had a large white light at each corner. No sound whatsoever despite extremely close range."},
+  {id:"D052",lat:37.59,lng:-106.19,location:"Rio Grande, N of Alamosa",date:"May 18, 1995",shape:"Light",duration:"~1 hr",observers:"3",county:"Alamosa",summary:"Three witnesses observe amber light over Rio Grande River for over one hour. Light dipped to river surface level repeatedly then rose again. Fish kill reported on that section of river two days later."},
+  {id:"D053",lat:37.96,lng:-105.70,location:"N Crestone, CO",date:"April 30, 1994",shape:"Sphere",duration:"Extended",observers:"2",county:"Saguache",summary:"75-yr-old local historian Jack Harlan sees large silver sphere with sequencing red-green lights revealing two raised ridges on underside. Second witness saw bright object streaking SE at 45°. Harlan reported unusual lethargy the next day."},
+  {id:"D054",lat:37.89,lng:-105.74,location:"Baca Ranch",date:"May 5, 1994",shape:"Sphere",duration:"Several min",observers:"1",county:"Saguache",summary:"Dr. Steven Greer observed bright silver sphere hovering over the Sangres while jogging on Baca Ranch. No vapor trail. Hovered silently several minutes before heading east at high speed."},
+  {id:"D055",lat:37.89,lng:-105.73,location:"Baca Grande Development",date:"May 25, 1994",shape:"Fireball",duration:"2 sec",observers:"1",county:"Saguache",summary:"From second-story roof, observed beach-to-medicine-ball-sized white-blue firework looking south. Light flared a mile over Willow Creek at altitude below the witness's vantage point."},
+  {id:"D056",lat:37.66,lng:-106.64,location:"South Fork and Creede area",date:"May 24, 1994",shape:"Sphere",duration:"20–30 min",observers:"1",county:"Rio Grande",summary:"Rio Grande Sheriff's Office report of large silver sphere over Rio Grande river with light sequencing around the rim. Sphere was observed by a deputy at close range — estimated 50 feet in diameter."},
+  {id:"D057",lat:37.50,lng:-106.25,location:"Over Greenie Mountain, S of Monte Vista",date:"May 17, 1994",shape:"Large craft + pursuer",duration:"Several min",observers:"2",county:"Rio Grande",summary:"Stephanie Malouff and Debbie Jiron see huge bright light with lots of little lights — far too large for any conventional craft. Chased by smaller object that turned from white to red and made a 45° turn west over mountains. Heard pinging sound like ricocheting bullets."},
+  {id:"D058",lat:37.57,lng:-106.08,location:"Maxiville area, N of Monte Vista",date:"May 9, 1994",shape:"Helicopter (dark, unmarked)",duration:"Brief",observers:"1",county:"Rio Grande",summary:"Brian Norton sees dark unmarked helicopter buzzing area where strange strobe light was seen on preceding nights. No markings. No flight plan on record with local airport."},
+  {id:"D059",lat:37.58,lng:-106.05,location:"Rd 4N and 3W, N of Monte Vista",date:"May 7–8, 1994",shape:"Strobe light",duration:"Extended",observers:"Multiple",county:"Rio Grande",summary:"Multiple calls of fast-moving strobe light just above trees. Cars lined up on Hwy 285 watching it. Undersheriff Norton observed light which appeared to mirror his actions — stopping when he stopped, moving when he moved."},
+  {id:"D060",lat:37.94,lng:-105.72,location:"Crestone, CO",date:"June 1, 1994",shape:"Helicopter",duration:"Several min",observers:"1",county:"Saguache",summary:"George Oringdulph awakened by continuous roar of large helicopter hovering low over his house. Went outside — chopper departed immediately. No explanation. Neighbors also heard it."},
+  {id:"D061",lat:37.92,lng:-105.90,location:"Highway 17 near Moffat",date:"August 21, 1994",shape:"Light",duration:"Extended",observers:"2",county:"Saguache",summary:"Two witnesses driving north on 17 see low-flying flashing light parallel to highway. Later see orange light moving east toward Crestone. Three moved west into valley. Fourth remained. Fifth larger light followed. Extinguished in slow-motion near Moffat."},
+  {id:"D062",lat:37.67,lng:-105.93,location:"South of Hooper, CO",date:"August 12, 1994",shape:"Formation",duration:"~18 min",observers:"4",county:"Alamosa",summary:"Four witnesses on back roads south of Hooper watch a perfect diamond formation of orange lights traverse the valley from north to south. Formation maintained exact spacing. No sound at any point."},
+  {id:"D063",lat:37.47,lng:-105.87,location:"Alamosa city limits",date:"July 22, 1994",shape:"Disc",duration:"~3 min",observers:"6",county:"Alamosa",summary:"Six witnesses at a summer gathering observe classic disc-shaped craft silhouetted against evening sky. Object had ring of colored lights and central dome. Departed vertically at speed leaving no contrail."},
+  {id:"D064",lat:37.88,lng:-105.82,location:"Moffat, CO rural area",date:"July 9, 1994",shape:"Unknown",duration:"N/A",observers:"1",county:"Saguache",summary:"Rancher finds second cattle mutilation. Precision incisions on jaw, rectum, and udder. Zero blood loss on ground. USDA veterinarian examination confirmed no predator involvement. No tracks within 200-foot radius."},
+  {id:"D065",lat:38.02,lng:-105.91,location:"Center, CO",date:"June 18, 1994",shape:"Oval",duration:"~7 min",observers:"3",county:"Saguache",summary:"Three witnesses observe oval craft hovering silently over the Center power substation. Object appeared to be stationary above the equipment for several minutes. Departed northwest. Power fluctuated during observation."},
+  {id:"D066",lat:37.73,lng:-105.51,location:"Great Sand Dunes, E face",date:"June 5, 1994",shape:"Light",duration:"~2 hrs",observers:"Multiple",county:"Alamosa",summary:"Multiple campers and rangers at Great Sand Dunes observe slow-moving light traversing along the base of the Sangre de Cristo mountains for over two hours. Light appeared to descend into mountain at one point."},
+  {id:"D067",lat:37.45,lng:-106.08,location:"S of Alamosa near Blanca Peak",date:"May 30, 1994",shape:"Sphere",duration:"~5 min",observers:"2",county:"Costilla",summary:"Two witnesses at dawn see a brilliant sphere emerge from direction of Blanca Peak — a sacred Navajo mountain — hover at low altitude over the valley, then return to the peak and vanish into it."},
+  {id:"D068",lat:37.85,lng:-105.85,location:"Center, CO fields",date:"May 22, 1994",shape:"Disc",duration:"~4 min",observers:"1",county:"Saguache",summary:"Agricultural pilot reports disc-shaped craft at his altitude (1,500 ft AGL) that matched his heading and airspeed for four minutes. Object was metallic, had no visible propulsion or control surfaces. Filed NUFORC report."},
+  {id:"D069",lat:37.94,lng:-105.72,location:"Crestone Spiritual Center",date:"May 11, 1994",shape:"Large craft",duration:"~15 min",observers:"Multiple",county:"Saguache",summary:"Multiple witnesses at spiritual retreat center observe enormous dark craft hovering silently over the Sangre de Cristo mountains for 15 minutes. Object blocked stars. At least 10 separate witnesses on record."},
+  {id:"D070",lat:37.67,lng:-106.06,location:"N of Blanca, CO",date:"March 19, 1994",shape:"Triangle",duration:"~10 min",observers:"1",county:"Costilla",summary:"Single witness sees large black triangle silhouetted against moonlit sky. Three dim lights at each vertex. Object moved impossibly slowly — slower than any aircraft could maintain lift — before accelerating instantly."},
+  {id:"D071",lat:38.07,lng:-106.12,location:"Saguache, CO outskirts",date:"February 27, 1994",shape:"Cigar",duration:"~6 min",observers:"2",county:"Saguache",summary:"Two witnesses report cigar-shaped craft at sunset appearing to track along the mountains. Object was elongated, no wings, silent. Caught late sun giving it a silver-orange color. Vanished behind peak."},
+  {id:"D072",lat:37.96,lng:-105.71,location:"N Crestone, CO",date:"February 14, 1994",shape:"Sphere + lights",duration:"~20 min",observers:"3",county:"Saguache",summary:"Valentine's Day sighting. Three witnesses report formation of five amber spheres that rearranged into multiple patterns over 20 minutes before departing southward in single file. One witness photographed."},
+  {id:"D073",lat:37.87,lng:-105.97,location:"W of Moffat near Jct Hwy 285",date:"January 30, 1994",shape:"Light",duration:"~45 min",observers:"1",county:"Saguache",summary:"Night driver observes stationary light over the valley that follows his vehicle for 20 miles. Light maintained exact position relative to vehicle regardless of speed or direction changes. Disappeared at edge of valley."},
+  {id:"D074",lat:37.73,lng:-106.19,location:"Center, CO",date:"January 15, 1994",shape:"Formation",duration:"~8 min",observers:"5",county:"Saguache",summary:"Five center-town residents observe seven lights arranged in formation moving west to east across the valley in near-silence. Formation made a coordinated 90-degree turn north without slowing or breaking formation."},
+  {id:"D075",lat:37.66,lng:-105.94,location:"South of Hooper, CO",date:"November 28, 1994",shape:"Triangle",duration:"~14 min",observers:"3",county:"Alamosa",summary:"Thanksgiving night. Three family members outside after dinner see large black triangle with red-white-blue lights at vertices pass directly overhead at low altitude. No sound whatsoever. Cat and dog hid during sighting."},
+  {id:"D076",lat:37.84,lng:-106.17,location:"Rio Grande between Alamosa and Monte Vista",date:"October 31, 1994",shape:"Oval",duration:"~7 min",observers:"1",county:"Alamosa",summary:"Halloween night sighting. Single witness reports oval craft hovering over Rio Grande. Object appeared to draw water vapor from river, creating visible mist below the craft. Departed east after seven minutes."},
+  {id:"D077",lat:38.08,lng:-105.87,location:"Moffat, CO",date:"October 11, 1994",shape:"Large craft",duration:"~12 min",observers:"2",county:"Saguache",summary:"Two witnesses report a craft of absolutely extraordinary size — they estimated it filled the entire north sky. Bank of amber lights on leading edge. No sound. Ground illuminated beneath it as it passed."},
+  {id:"D078",lat:37.94,lng:-105.74,location:"Crestone area, Sangre de Cristo face",date:"September 22, 1994",shape:"Sphere",duration:"~10 min",observers:"4",county:"Saguache",summary:"Equinox night. Four Crestone residents observe luminous sphere emerge from Sangre de Cristo mountain face, traverse valley at low altitude, and apparently reenter mountain on the opposite San Juan range."},
+  {id:"D079",lat:37.86,lng:-105.97,location:"W of Moffat, CO",date:"September 2, 1994",shape:"Disc",duration:"~5 min",observers:"1",county:"Saguache",summary:"Lone farmer late returning from field observes classic disc hovering silently over his property. Object illuminated the ground beneath with a diffuse white light. Crops below appeared undamaged but dried out next morning."},
+  {id:"D080",lat:37.52,lng:-105.98,location:"Alamosa, north edge",date:"August 29, 1994",shape:"Formation",duration:"~10 min",observers:"Multiple",county:"Alamosa",summary:"Multiple witnesses report four lights approaching from south in diamond formation. Formation split into pairs that each went different directions. One pair descended below horizon near Monte Vista. No sound reported."},
+  {id:"D081",lat:37.97,lng:-105.69,location:"Crestone Needle, upper slopes",date:"August 15, 1994",shape:"Unknown",duration:"~6 min",observers:"2",county:"Saguache",summary:"Two climbers descending from summit observe large dark object emerge from below their position on the mountain — apparently from inside the mountain face — and ascend silently into the sky. Described as moving upward like an elevator."},
+  {id:"D082",lat:37.76,lng:-106.02,location:"East of Center, CO",date:"August 2, 1994",shape:"Disc",duration:"~8 min",observers:"1",county:"Saguache",summary:"Potato farmer observes disc descend into his eastern field at dusk. Drove truck toward it. Object ascended as he approached. He attempted to cut it off. Object matched his direction each time, maintaining distance."},
+  {id:"D083",lat:37.45,lng:-105.86,location:"Alamosa, SE",date:"July 31, 1994",shape:"Triangle",duration:"~9 min",observers:"3",county:"Alamosa",summary:"Three witnesses near Alamosa airport perimeter see large black triangle pass directly over airport. Airport tower personnel later confirmed radar contact with unidentified return during exact same time window."},
+  {id:"D084",lat:38.12,lng:-106.23,location:"Cochetopa Pass area",date:"July 25, 1994",shape:"Cigar",duration:"~4 min",observers:"1",county:"Saguache",summary:"Motorcyclist on Cochetopa Pass road sees elongated silver craft cross pass at high speed. No sound despite proximity. Object was at his elevation — approximately 10,000 feet — and vanished into San Luis Valley."},
+  {id:"D085",lat:37.85,lng:-105.74,location:"Baca Ranch north pasture",date:"July 17, 1994",shape:"Unknown",duration:"N/A",observers:"1",county:"Saguache",summary:"Third cattle mutilation at Baca Ranch. Found at dawn. No dew on ground inside 100-foot radius of carcass — as if area had been bathed in heat. Veterinary examination found no earthly cutting tool match for incisions."},
+  {id:"D086",lat:37.94,lng:-105.71,location:"Crestone, CO center",date:"July 8, 1994",shape:"Light array",duration:"~25 min",observers:"Multiple",county:"Saguache",summary:"Multiple Crestone witnesses, including several at a community meeting, observe seven red lights arrange into different geometric patterns over 25 minutes before departing individually in different compass directions."},
+  {id:"D087",lat:37.47,lng:-105.87,location:"Alamosa, SW quarter",date:"June 30, 1994",shape:"Oval",duration:"~6 min",observers:"5",county:"Alamosa",summary:"Five witnesses report an oval craft with exterior lights rotating counterclockwise while the craft itself drifted northeast. Craft made no sound. Lights faded out one by one until the craft was invisible, then vanished."},
+  {id:"D088",lat:37.68,lng:-106.35,location:"Del Norte, CO",date:"June 15, 1994",shape:"Disc",duration:"~10 min",observers:"3",county:"Rio Grande",summary:"Three Del Norte residents observe silver disc hovering above the high school during summer evening. Object was highly reflective. Estimated 60 feet in diameter. Tilted up, then departed south at tremendous speed."},
+  {id:"D089",lat:38.07,lng:-105.87,location:"E of Moffat near Crestone Creek",date:"June 8, 1994",shape:"Sphere",duration:"~15 min",observers:"2",county:"Saguache",summary:"Two fishermen observe amber sphere follow Crestone Creek from mountains toward valley. Object appeared to decelerate as it approached populated area, hover briefly over irrigation channel, then reverse back to mountains."},
+  {id:"D090",lat:37.67,lng:-105.93,location:"Hooper, CO area",date:"May 28, 1994",shape:"Large craft",duration:"~8 min",observers:"1",county:"Alamosa",summary:"Motorist stops vehicle when enormous dark shape blocks starfield ahead. Craft covers field of view entirely. Bank of lights on underside illuminate highway. No sound. Object ascends slowly then accelerates out of sight northward."},
+  {id:"D091",lat:37.86,lng:-105.85,location:"Center, CO east of town",date:"May 20, 1994",shape:"Formation",duration:"~20 min",observers:"Multiple",county:"Saguache",summary:"Multiple witnesses watch formation of lights over Center that rearranges continuously for 20 minutes. Shapes include straight lines, triangles, circles. Entire formation then moves south as a unit and fades."},
+  {id:"D092",lat:37.56,lng:-106.05,location:"S of Monte Vista, CO",date:"May 14, 1994",shape:"Sphere",duration:"~4 min",observers:"2",county:"Rio Grande",summary:"Two witnesses observe large chrome sphere at low altitude traveling north-south over Monte Vista. Object was approximately 40 feet in diameter with a slight equatorial band visible. No sound. Disappeared southward."},
+  {id:"D093",lat:37.85,lng:-105.84,location:"Moffat area E",date:"May 2, 1994",shape:"Light",duration:"~1.5 hrs",observers:"1",county:"Saguache",summary:"Night rancher checking stock watches stationary amber light over the Sangres for 90 minutes. Light occasionally split into three lights that moved apart then rejoined. Attempted photography — film came back blank."},
+  {id:"D094",lat:37.94,lng:-105.72,location:"Crestone, CO",date:"April 19, 1994",shape:"Cigar",duration:"~3 min",observers:"3",county:"Saguache",summary:"Three witnesses report silver cigar-shaped craft approach from west, slow to near-stop above Crestone, pivot 90 degrees without banking, and depart north at supersonic speed without audible boom."},
+  {id:"D095",lat:37.86,lng:-106.00,location:"W of Moffat on 285",date:"April 5, 1994",shape:"Triangle",duration:"~7 min",observers:"2",county:"Saguache",summary:"Couple driving home see black triangular craft pursue their vehicle for seven minutes at 65 mph. Object remained 50 feet above their car with no turbulence, no sound. Departed vertically the instant they entered Moffat."},
+  {id:"D096",lat:37.48,lng:-105.88,location:"Alamosa N, near Adams State",date:"March 30, 1994",shape:"Disc",duration:"~5 min",observers:"4",county:"Alamosa",summary:"Four Adams State students on late-night walk observe silver disc hovering above campus. Disc tilted, revealing underside with concentric ring structures. Students attempted to video — camera would not operate during event."},
+  {id:"D097",lat:38.17,lng:-105.83,location:"Valley View Hot Springs, CO",date:"March 12, 1994",shape:"Unknown",duration:"~30 min",observers:"3",county:"Saguache",summary:"Three guests at Valley View Hot Springs observe an object on the ridge that did not match any known terrain feature. Object illuminated from within. By morning it was gone — no tracks in snow on the ridge."},
+  {id:"D098",lat:37.67,lng:-106.06,location:"North of Blanca, CO",date:"March 3, 1994",shape:"Formation",duration:"~11 min",observers:"1",county:"Costilla",summary:"Single witness reports four red lights in square formation maintain perfect position while the formation itself orbits a central invisible point for eleven minutes, then all four depart simultaneously in different directions."},
+  {id:"D099",lat:37.87,lng:-105.73,location:"Baca Grande, CO",date:"February 20, 1994",shape:"Sphere",duration:"~8 min",observers:"5",county:"Saguache",summary:"Five Baca Grande residents report a pulsing golden sphere descend from high altitude to near-ground level in the valley. Object moved horizontally for two miles then departed vertically in approximately one second."},
+  {id:"D100",lat:37.94,lng:-105.71,location:"Crestone, CO",date:"February 7, 1994",shape:"Large craft",duration:"~20 min",observers:"Multiple",county:"Saguache",summary:"Over a dozen Crestone residents observe a craft of immense size traverse the valley slowly from north to south. Stars clearly visible through portions of the object's surface, yet solid edges visible. Total silence."},
+  {id:"D101",lat:37.73,lng:-105.52,location:"Great Sand Dunes",date:"January 28, 1994",shape:"Light",duration:"~1 hr",observers:"2",county:"Alamosa",summary:"Two winter campers at Sand Dunes see brilliant orange light hover over the dunes for an hour. Light descended to just above the sand on three occasions. Dunes were found to have unusual circular depressions at dawn."},
+  {id:"D102",lat:37.57,lng:-106.07,location:"Monte Vista, CO",date:"January 15, 1994",shape:"Disc",duration:"~3 min",observers:"3",county:"Rio Grande",summary:"Three witnesses at a 24-hour diner observe a metallic disc moving north in the predawn sky. Object stopped, reversed, stopped again, then executed a sharp right-angle turn west and accelerated out of sight."},
+  {id:"D103",lat:38.06,lng:-105.90,location:"Moffat, CO north",date:"December 30, 1994",shape:"Formation",duration:"~15 min",observers:"2",county:"Saguache",summary:"Two witnesses on New Year's Eve eve see six white lights converge from different directions to a central point, hold position for ten minutes, then reverse back to their original approaching directions and disappear."},
+  {id:"D104",lat:37.97,lng:-105.69,location:"Crestone Peak approach",date:"November 19, 1994",shape:"Sphere",duration:"~12 min",observers:"1",county:"Saguache",summary:"Experienced mountaineer reports luminous sphere following him at distance along the trail for 12 minutes. Object maintained consistent distance. Disappeared the moment he reached his campsite and other hikers."},
+  {id:"D105",lat:37.44,lng:-106.12,location:"S of Alamosa, toward NM line",date:"October 25, 1994",shape:"Light formation",duration:"~22 min",observers:"5",county:"Alamosa",summary:"Five witnesses observe three white lights in triangular formation approach slowly from New Mexico. Formation hovered over valley for 22 minutes executing slow maneuvers before retreating south toward the state line."},
+  {id:"D106",lat:37.87,lng:-105.97,location:"W of Moffat, CO",date:"October 8, 1994",shape:"Cylinder",duration:"~5 min",observers:"3",county:"Saguache",summary:"Three witnesses observe cylindrical craft at high altitude reflecting sunset. Object was stationary for three minutes then moved north at low speed — far too slow for any conventional aircraft at that altitude."},
+  {id:"D107",lat:37.85,lng:-105.73,location:"Baca Ranch, SE pasture",date:"September 30, 1994",shape:"Unknown",duration:"N/A",observers:"1",county:"Saguache",summary:"Fourth cattle mutilation event on Baca Ranch property in 1994. USDA Animal and Plant Health Inspection Service dispatched. Report noted 'no conventional explanation for the nature of the incisions or total exsanguination without evidence at scene.'"}
+];
+
+// ════════════════════════════════════════════════
+//  MAP INIT
+// ════════════════════════════════════════════════
+const map = L.map('map', {
+  center: [37.75, -105.95],
+  zoom: 10,
+  zoomControl: true,
+  attributionControl: false
+});
+
+// Dark satellite tiles
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+  maxZoom:18, opacity:0.65
+}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{
+  maxZoom:18, opacity:0.4
+}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{
+  maxZoom:18, opacity:0.25
+}).addTo(map);
+
+// Reposition zoom
+map.zoomControl.setPosition('bottomleft');
+
+// ════════════════════════════════════════════════
+//  CUSTOM MARKER SVG
+// ════════════════════════════════════════════════
+function makeIcon(glowing){
+  const color   = glowing ? '#ffcc44' : '#ff2a2a';
+  const glow1   = glowing ? 'rgba(255,200,40,0.7)' : 'rgba(255,42,42,0.7)';
+  const glow2   = glowing ? 'rgba(255,170,0,0.25)' : 'rgba(255,42,42,0.2)';
+  const center  = glowing ? '#ffffff' : '#ffaaaa';
+  const pulseR  = glowing ? '#ffcc44' : '#ff2a2a';
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
+    <defs>
+      <radialGradient id="pg${glowing?'g':'n'}" cx="50%" cy="30%" r="60%">
+        <stop offset="0%" stop-color="${center}"/>
+        <stop offset="40%" stop-color="${color}"/>
+        <stop offset="100%" stop-color="#660000"/>
+      </radialGradient>
+      <filter id="gf${glowing?'g':'n'}" x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="${glowing?'4':'2.5'}" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- outer glow ring -->
+    <ellipse cx="18" cy="14" rx="${glowing?'16':'12'}" ry="${glowing?'16':'12'}"
+      fill="none" stroke="${glow2}" stroke-width="${glowing?'8':'5'}"/>
+    <!-- pin body -->
+    <path d="M18 2 C10 2 4 8 4 16 C4 26 18 46 18 46 C18 46 32 26 32 16 C32 8 26 2 18 2Z"
+      fill="url(#pg${glowing?'g':'n'})" filter="url(#gf${glowing?'g':'n'})"/>
+    <!-- inner circle -->
+    <circle cx="18" cy="16" r="5" fill="${center}" opacity="0.9"/>
+    ${glowing ? `<circle cx="18" cy="16" r="8" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4"/>` : ''}
+  </svg>`;
+
+  return L.divIcon({
+    html: svg,
+    className: '',
+    iconSize: [36, 48],
+    iconAnchor: [18, 46],
+    popupAnchor: [0, -48]
+  });
+}
+
+const iconNormal = makeIcon(false);
+const iconGlow   = makeIcon(true);
+
+// ════════════════════════════════════════════════
+//  MARKERS
+// ════════════════════════════════════════════════
+const markers = {};
+const layers  = {};
+
+SIGHTINGS.forEach(s => {
+  const m = L.marker([s.lat, s.lng], { icon: iconNormal, title: s.location });
+
+  const popHtml = `
+    <div class="pop-loc">${s.location}</div>
+    <div class="pop-meta">${s.date} &nbsp;|&nbsp; ${s.shape}</div>
+    <button class="pop-btn" onclick="openPanel('${s.id}')">VIEW FULL REPORT ›</button>`;
+
+  m.bindPopup(popHtml, { maxWidth: 240, closeButton: true });
+  m.addTo(map);
+
+  markers[s.id] = { marker: m, data: s, glowing: false };
+});
+
+// ════════════════════════════════════════════════
+//  PANEL
+// ════════════════════════════════════════════════
+function openPanel(id){
+  const s = SIGHTINGS.find(x=>x.id===id);
+  if(!s) return;
+  document.getElementById('p-id').textContent    = s.id;
+  document.getElementById('p-shape').textContent = s.shape + ' · SIGHTING';
+  document.getElementById('p-loc').textContent   = s.location;
+  document.getElementById('p-date').textContent  = s.date;
+  document.getElementById('p-dur').textContent   = s.duration;
+  document.getElementById('p-obs').textContent   = s.observers + ' witness(es)';
+  document.getElementById('p-county').textContent= s.county + ' County';
+  document.getElementById('p-desc').textContent  = s.summary;
+  document.getElementById('p-coords').textContent= `${s.lat.toFixed(4)}°N  ${Math.abs(s.lng).toFixed(4)}°W`;
+  document.getElementById('panel').classList.add('open');
+  map.closePopup();
+}
+
+document.getElementById('panel-close').onclick = () => {
+  document.getElementById('panel').classList.remove('open');
+};
+
+// ════════════════════════════════════════════════
+//  GLOW CONTROL
+// ════════════════════════════════════════════════
+function setAllGlow(glowing){
+  Object.values(markers).forEach(({marker}) => marker.setIcon(glowing ? iconGlow : iconNormal));
+}
+
+function applyGlow(ids){
+  // ids = Set of matching ids
+  Object.entries(markers).forEach(([id,{marker}]) => {
+    marker.setIcon(ids.has(id) ? iconGlow : iconNormal);
+  });
+}
+
+function resetGlow(){
+  Object.values(markers).forEach(({marker}) => marker.setIcon(iconNormal));
+  document.getElementById('match-badge').style.display='none';
+}
+
+// ════════════════════════════════════════════════
+//  SEARCH
+// ════════════════════════════════════════════════
+const searchInput   = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+const searchClear   = document.getElementById('search-clear');
+const searchStatus  = document.getElementById('search-status');
+const matchBadge    = document.getElementById('match-badge');
+
+// pill filter state
+let activePill = null;
+
+function matchSighting(s, q){
+  q = q.toLowerCase();
+  return (
+    s.location.toLowerCase().includes(q) ||
+    s.shape.toLowerCase().includes(q) ||
+    s.county.toLowerCase().includes(q) ||
+    s.summary.toLowerCase().includes(q) ||
+    s.date.toLowerCase().includes(q) ||
+    s.id.toLowerCase().includes(q)
+  );
+}
+
+function runSearch(q){
+  q = q.trim();
+  if(!q){ resetGlow(); searchResults.style.display='none'; searchStatus.style.display='none'; searchClear.style.display='none'; return; }
+  searchClear.style.display='block';
+
+  const hits = SIGHTINGS.filter(s => matchSighting(s,q));
+  const ids  = new Set(hits.map(s=>s.id));
+  applyGlow(ids);
+
+  if(hits.length===0){
+    searchResults.style.display='none';
+    searchStatus.textContent='NO MATCHES';
+    searchStatus.style.display='block';
+    matchBadge.style.display='none';
+    return;
+  }
+  searchStatus.style.display='none';
+  matchBadge.textContent=`${hits.length} MATCH${hits.length===1?'':'ES'}`;
+  matchBadge.style.display='block';
+
+  searchResults.innerHTML = hits.slice(0,12).map(s=>`
+    <div class="sr-item" onclick="selectResult('${s.id}')">
+      <div class="sr-loc">${s.location}</div>
+      <div class="sr-meta">${s.date} &nbsp;·&nbsp; <span class="sr-match">${s.shape}</span> &nbsp;·&nbsp; ${s.county} Co.</div>
+    </div>`).join('');
+
+  if(hits.length>12){
+    searchResults.innerHTML += `<div class="sr-item" style="opacity:.4;cursor:default;font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text)">+${hits.length-12} MORE RESULTS — REFINE SEARCH</div>`;
+  }
+  searchResults.style.display='block';
+}
+
+function selectResult(id){
+  const s = SIGHTINGS.find(x=>x.id===id);
+  if(!s) return;
+  map.setView([s.lat, s.lng], 13, {animate:true});
+  markers[id].marker.openPopup();
+  searchResults.style.display='none';
+  openPanel(id);
+}
+
+searchInput.addEventListener('input', e => {
+  if(activePill){ activePill.classList.remove('active'); activePill=null; }
+  runSearch(e.target.value);
+});
+
+searchInput.addEventListener('keydown', e => {
+  if(e.key==='Escape'){ clearSearch(); }
+  if(e.key==='Enter'){
+    const first = searchResults.querySelector('.sr-item');
+    if(first){ first.click(); }
+  }
+});
+
+searchClear.addEventListener('click', clearSearch);
+
+function clearSearch(){
+  searchInput.value='';
+  searchResults.style.display='none';
+  searchStatus.style.display='none';
+  searchClear.style.display='none';
+  matchBadge.style.display='none';
+  resetGlow();
+  if(activePill){ activePill.classList.remove('active'); activePill=null; }
+}
+
+map.on('click', () => { searchResults.style.display='none'; });
+
+// ════════════════════════════════════════════════
+//  FILTER PILLS
+// ════════════════════════════════════════════════
+const PILL_QUERIES = {
+  disc:     s => s.shape.toLowerCase().includes('disc'),
+  light:    s => s.shape.toLowerCase().includes('light'),
+  sphere:   s => s.shape.toLowerCase().includes('sphere'),
+  triangle: s => s.shape.toLowerCase().includes('triangle'),
+  cigar:    s => s.shape.toLowerCase().includes('cigar'),
+  fireball: s => s.shape.toLowerCase().includes('fireball'),
+  cattle:   s => s.summary.toLowerCase().includes('mutilat'),
+  '1994':   s => s.date.includes('1994'),
+  '1997':   s => s.date.includes('1997'),
+  '2000s':  s => { const y=parseInt(s.date.split(' ').pop()); return y>=2000&&y<2010; },
+  '2010s':  s => { const y=parseInt(s.date.split(' ').pop()); return y>=2010&&y<2020; },
+  crestone: s => s.location.toLowerCase().includes('crestone'),
+  alamosa:  s => s.location.toLowerCase().includes('alamosa'),
+  baca:     s => s.location.toLowerCase().includes('baca')
+};
+
+document.querySelectorAll('.pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const key = pill.dataset.filter;
+    if(activePill === pill){
+      pill.classList.remove('active');
+      activePill = null;
+      searchInput.value='';
+      resetGlow();
+      matchBadge.style.display='none';
+      return;
+    }
+    if(activePill) activePill.classList.remove('active');
+    activePill = pill;
+    pill.classList.add('active');
+    searchInput.value='';
+    searchResults.style.display='none';
+    searchClear.style.display='none';
+    searchStatus.style.display='none';
+
+    const fn  = PILL_QUERIES[key];
+    const hits = SIGHTINGS.filter(fn);
+    const ids  = new Set(hits.map(s=>s.id));
+    applyGlow(ids);
+    matchBadge.textContent=`${hits.length} MATCH${hits.length===1?'':'ES'}`;
+    matchBadge.style.display='block';
+  });
+});
+</script>
+</body>
+</html>
+HTMLEOF
+echo "Done. Size: $(wc -c < /home/claude/slv-ufo-map.html) bytes"
