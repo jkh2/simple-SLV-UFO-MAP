@@ -115,6 +115,58 @@ html,body{width:100%;height:100%;overflow:hidden;background:#020409;font-family:
   color:var(--red-glow);box-shadow:0 0 12px rgba(255,42,42,0.12);
 }
 
+/* ── YEAR SLIDER ── */
+#year-wrap{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  z-index:20;background:rgba(2,6,16,0.88);
+  border:1px solid rgba(255,42,42,0.22);border-radius:2px;
+  padding:10px 18px 12px;min-width:340px;
+}
+#year-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+#year-title{font-family:var(--mono);font-size:8px;color:rgba(200,216,232,0.35);letter-spacing:2px}
+#year-display{font-family:var(--mono);font-size:13px;color:var(--red-glow);letter-spacing:2px;font-weight:bold;text-shadow:0 0 10px rgba(255,42,42,0.4)}
+#year-count{font-family:var(--mono);font-size:8px;color:rgba(200,216,232,0.4);letter-spacing:1px}
+#year-all-btn{
+  font-family:var(--mono);font-size:8px;letter-spacing:2px;
+  background:none;border:1px solid rgba(255,42,42,0.25);
+  color:rgba(255,42,42,0.5);cursor:pointer;padding:3px 8px;
+  border-radius:1px;transition:all .15s;
+}
+#year-all-btn:hover, #year-all-btn.active{
+  background:rgba(255,42,42,0.12);border-color:rgba(255,42,42,0.6);
+  color:var(--red-glow);
+}
+.year-slider-row{display:flex;align-items:center;gap:10px;margin-top:6px}
+.yr-label{font-family:var(--mono);font-size:8px;color:rgba(200,216,232,0.3);letter-spacing:1px;white-space:nowrap}
+input[type=range].yr-slider{
+  -webkit-appearance:none;flex:1;height:3px;
+  background:linear-gradient(90deg,var(--red) var(--pct,0%),rgba(255,42,42,0.15) var(--pct,0%));
+  border-radius:2px;outline:none;cursor:pointer;
+}
+input[type=range].yr-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--red);box-shadow:0 0 10px var(--red),0 0 20px rgba(255,42,42,0.5);
+  cursor:pointer;border:2px solid rgba(255,255,255,0.25);
+}
+/* bar chart */
+#year-bars{display:flex;align-items:flex-end;gap:2px;height:32px;margin-bottom:4px}
+.yr-bar{
+  flex:1;border-radius:1px 1px 0 0;background:rgba(255,42,42,0.2);
+  transition:background .15s,box-shadow .15s;cursor:pointer;min-width:3px;
+  position:relative;
+}
+.yr-bar:hover{background:rgba(255,42,42,0.45)}
+.yr-bar.active{background:var(--red);box-shadow:0 0 8px rgba(255,42,42,0.6)}
+.yr-bar.dim{background:rgba(255,42,42,0.07)}
+.yr-bar-tip{
+  display:none;position:absolute;bottom:calc(100% + 4px);left:50%;
+  transform:translateX(-50%);white-space:nowrap;
+  font-family:var(--mono);font-size:8px;color:var(--text);
+  background:rgba(2,6,16,0.9);border:1px solid var(--border);
+  padding:2px 5px;border-radius:1px;pointer-events:none;
+}
+.yr-bar:hover .yr-bar-tip{display:block}
+
 /* ── DETAIL PANEL ── */
 #panel{
   position:fixed;right:0;top:52px;bottom:0;width:310px;z-index:20;
@@ -145,18 +197,53 @@ html,body{width:100%;height:100%;overflow:hidden;background:#020409;font-family:
   color:rgba(200,216,232,0.25);letter-spacing:1px;border-top:1px solid rgba(255,42,42,0.08);padding-top:10px;
 }
 
-/* ── LEGEND ── */
-#legend{
-  position:fixed;bottom:24px;left:20px;z-index:20;
-  background:rgba(2,6,16,0.82);border:1px solid var(--border);
-  border-radius:2px;padding:10px 14px;
+/* ── HEAT TOGGLE ── */
+/* ── DRAGGABLE LEFT PANEL ── */
+#left-panel{
+  position:fixed;left:20px;bottom:80px;z-index:20;
+  background:rgba(2,6,16,0.92);border:1px solid var(--border);
+  border-radius:2px;width:190px;
+  box-shadow:0 4px 30px rgba(0,0,0,0.5);
+  user-select:none;
 }
-.leg-title{font-family:var(--mono);font-size:8px;color:rgba(200,216,232,0.3);letter-spacing:2px;margin-bottom:8px}
+#left-panel-grip{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;border-bottom:1px solid rgba(255,42,42,0.12);
+  cursor:grab;
+}
+#left-panel-grip:active{ cursor:grabbing; }
+.grip-title{font-family:var(--mono);font-size:8px;color:rgba(200,216,232,0.25);letter-spacing:2px}
+.grip-dots{display:flex;flex-direction:column;gap:3px;opacity:0.25}
+.grip-dots span{display:flex;gap:3px}
+.grip-dots i{width:3px;height:3px;border-radius:50%;background:var(--text);display:block}
+#left-panel-body{ padding:10px 12px; }
+
+/* buttons inside panel */
+.lp-btn{
+  display:flex;align-items:center;gap:8px;width:100%;
+  background:none;border:1px solid rgba(255,42,42,0.2);
+  border-radius:2px;padding:8px 10px;cursor:pointer;
+  font-family:var(--mono);font-size:9px;letter-spacing:2px;
+  color:rgba(200,216,232,0.45);transition:all .15s;margin-bottom:7px;
+}
+.lp-btn:hover{ background:rgba(255,42,42,0.08);border-color:rgba(255,42,42,0.5);color:var(--red-glow); }
+.lp-btn:last-of-type{ margin-bottom:0; }
+#btn-random{ color:var(--red-glow); }
+#btn-random:hover{ background:rgba(255,42,42,0.12);color:#fff; }
+#btn-heat.on{ border-color:rgba(255,100,50,0.6);color:#ff8855;background:rgba(255,60,0,0.08); }
+.btn-icon{ font-size:13px; }
+#btn-random .btn-icon{ animation:spin-slow 8s linear infinite; }
+@keyframes spin-slow{ from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+#btn-random:hover .btn-icon{ animation-duration:1.5s; }
+
+/* legend inside panel */
+.lp-divider{height:1px;background:linear-gradient(90deg,rgba(255,42,42,0.15),transparent);margin:10px 0}
+.leg-title{font-family:var(--mono);font-size:8px;color:rgba(200,216,232,0.25);letter-spacing:2px;margin-bottom:8px}
 .leg-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-.leg-dot{width:10px;height:10px;border-radius:50%}
-.leg-dot.normal{background:radial-gradient(circle,#ff6060 0%,#ff2a2a 60%);box-shadow:0 0 6px #ff2a2a,0 0 12px rgba(255,42,42,0.4)}
-.leg-dot.glow{background:radial-gradient(circle,#ffffff 0%,#ffaa00 40%,#ff4400 100%);box-shadow:0 0 14px #ffaa00,0 0 28px rgba(255,170,0,0.6)}
-.leg-text{font-family:var(--mono);font-size:9px;color:rgba(200,216,232,0.5)}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.leg-dot.normal{background:radial-gradient(circle,#ff6060 0%,#ff2a2a 60%);box-shadow:0 0 5px #ff2a2a}
+.leg-dot.glow{background:radial-gradient(circle,#fff 0%,#ffaa00 40%,#ff4400 100%);box-shadow:0 0 10px #ffaa00}
+.leg-text{font-family:var(--mono);font-size:8px;color:rgba(200,216,232,0.45)}
 
 /* ── COUNTER BADGE ── */
 #match-badge{
@@ -256,6 +343,23 @@ html,body{width:100%;height:100%;overflow:hidden;background:#020409;font-family:
     <div class="panel-desc-label">WITNESS ACCOUNT</div>
     <div class="panel-desc" id="p-desc"></div>
     <div class="panel-coords" id="p-coords"></div>
+    <a id="p-share" href="#" style="display:block;margin-top:12px;font-family:var(--mono);font-size:8px;letter-spacing:2px;color:rgba(255,42,42,0.4);text-decoration:none;transition:color .15s;cursor:pointer">⬡ SHARE THIS REPORT</a>
+  </div>
+</div>
+
+<!-- YEAR SLIDER -->
+<div id="year-wrap">
+  <div id="year-header">
+    <span id="year-title">FILTER BY YEAR</span>
+    <span id="year-display">ALL</span>
+    <span id="year-count">107 sightings</span>
+    <button id="year-all-btn" class="active" onclick="resetYearFilter()">ALL YEARS</button>
+  </div>
+  <div id="year-bars"></div>
+  <div class="year-slider-row">
+    <span class="yr-label">1994</span>
+    <input type="range" class="yr-slider" id="year-slider" min="1994" max="2019" value="1994" step="1">
+    <span class="yr-label">2019</span>
   </div>
 </div>
 
@@ -264,10 +368,52 @@ html,body{width:100%;height:100%;overflow:hidden;background:#020409;font-family:
   <div class="leg-title">MARKER KEY</div>
   <div class="leg-row"><div class="leg-dot normal"></div><span class="leg-text">Documented sighting</span></div>
   <div class="leg-row"><div class="leg-dot glow"></div><span class="leg-text">Search match</span></div>
+  <div style="height:1px;background:linear-gradient(90deg,rgba(255,42,42,0.2),transparent);margin:8px 0"></div>
+  <div class="leg-title" style="margin-bottom:6px">BY COUNTY</div>
+  <div id="county-counts"></div>
+</div>
+
+<!-- DRAGGABLE LEFT PANEL -->
+<div id="left-panel">
+  <div id="left-panel-grip">
+    <span class="grip-title">CONTROLS</span>
+    <div class="grip-dots">
+      <span><i></i><i></i><i></i></span>
+      <span><i></i><i></i><i></i></span>
+    </div>
+  </div>
+  <div id="left-panel-body">
+    <button id="btn-random" class="lp-btn" onclick="randomReport()">
+      <span class="btn-icon">🛸</span>RANDOM REPORT
+    </button>
+    <button id="btn-heat" class="lp-btn" onclick="toggleHeat()">
+      <span class="btn-icon">🔥</span>HEAT MAP
+    </button>
+    <div class="lp-divider"></div>
+    <div id="legend">
+      <div class="leg-title">MARKER KEY</div>
+      <div class="leg-row"><div class="leg-dot normal"></div><span class="leg-text">Documented sighting</span></div>
+      <div class="leg-row"><div class="leg-dot glow"></div><span class="leg-text">Search match</span></div>
+      <div style="height:1px;background:linear-gradient(90deg,rgba(255,42,42,0.15),transparent);margin:8px 0"></div>
+      <div class="leg-title" style="margin-bottom:6px">BY COUNTY</div>
+      <div id="county-counts"></div>
+    </div>
+  </div>
 </div>
 
 <!-- MATCH COUNT -->
-<div id="match-badge" id="match-badge"></div>
+<div id="match-badge"></div>
+
+<!-- FACEBOOK COMMUNITY BADGE -->
+<a id="fb-badge" href="https://www.facebook.com/groups/645890198862657" target="_blank" rel="noopener" title="Everything SLV on Facebook">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="#4267B2" xmlns="http://www.w3.org/2000/svg">
+    <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+  </svg>
+  <div class="fb-text">
+    <span class="fb-label">COMMUNITY</span>
+    <span class="fb-name">Everything SLV</span>
+  </div>
+</a>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
@@ -536,6 +682,11 @@ function openPanel(id){
   document.getElementById('p-county').textContent= s.county + ' County';
   document.getElementById('p-desc').textContent  = s.summary;
   document.getElementById('p-coords').textContent= `${s.lat.toFixed(4)}°N  ${Math.abs(s.lng).toFixed(4)}°W`;
+  // Share link
+  const shareUrl = `${location.origin}${location.pathname}?id=${id}`;
+  const shareEl  = document.getElementById('p-share');
+  shareEl.href   = shareUrl;
+  shareEl.onclick = (e)=>{ e.preventDefault(); navigator.clipboard.writeText(shareUrl).then(()=>{ shareEl.textContent='✓ COPIED'; setTimeout(()=>{ shareEl.textContent='⬡ SHARE THIS REPORT'; },2000); }); };
   document.getElementById('panel').classList.add('open');
   map.closePopup();
 }
@@ -622,10 +773,13 @@ function runSearch(q){
 function selectResult(id){
   const s = SIGHTINGS.find(x=>x.id===id);
   if(!s) return;
-  map.setView([s.lat, s.lng], 13, {animate:true});
-  markers[id].marker.openPopup();
   searchResults.style.display='none';
-  openPanel(id);
+  searchClear.style.display='none';
+  map.setView([s.lat, s.lng], 12, {animate:true, duration:0.8});
+  setTimeout(()=>{
+    const pt = map.latLngToContainerPoint([s.lat, s.lng]);
+    summonUFO(id, pt.x, pt.y);
+  }, 900);
 }
 
 searchInput.addEventListener('input', e => {
@@ -654,6 +808,187 @@ function clearSearch(){
 }
 
 map.on('click', () => { searchResults.style.display='none'; });
+
+// ── DEEP LINK: open report from URL param ──
+(function(){
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  if(id && markers[id]){
+    const s = markers[id].data;
+    map.setView([s.lat, s.lng], 12);
+    setTimeout(()=>{
+      const pt = map.latLngToContainerPoint([s.lat, s.lng]);
+      summonUFO(id, pt.x, pt.y);
+    }, 1200);
+  }
+})();
+
+
+// ════════════════════════════════════════════════
+//  YEAR SLIDER — single handle
+// ════════════════════════════════════════════════
+(function(){
+  const sliderEl  = document.getElementById('year-slider');
+  const displayEl = document.getElementById('year-display');
+  const countEl   = document.getElementById('year-count');
+  const barsEl    = document.getElementById('year-bars');
+  const allBtn    = document.getElementById('year-all-btn');
+  const MIN_YR = 1994, MAX_YR = 2019;
+  let allMode = true;
+
+  const byYear = {};
+  for(let y=MIN_YR; y<=MAX_YR; y++) byYear[y]=[];
+  SIGHTINGS.forEach(s=>{
+    const m=s.date.match(/\b(\d{4})\b/);
+    if(m){ const y=parseInt(m[1]); if(byYear[y]) byYear[y].push(s); }
+  });
+
+  const maxCount = Math.max(...Object.values(byYear).map(a=>a.length),1);
+  for(let y=MIN_YR; y<=MAX_YR; y++){
+    const bar = document.createElement('div');
+    bar.className = 'yr-bar';
+    bar.dataset.year = y;
+    bar.style.height = Math.max(3,(byYear[y].length/maxCount)*30)+'px';
+    const tip = document.createElement('div');
+    tip.className = 'yr-bar-tip';
+    tip.textContent = y+': '+byYear[y].length+' report'+(byYear[y].length!==1?'s':'');
+    bar.appendChild(tip);
+    bar.addEventListener('click',()=>{
+      allMode=false; sliderEl.value=y;
+      allBtn.classList.remove('active');
+      applyYear(y);
+    });
+    barsEl.appendChild(bar);
+  }
+
+  function updateTrack(yr){
+    const pct=((yr-MIN_YR)/(MAX_YR-MIN_YR)*100).toFixed(1);
+    sliderEl.style.setProperty('--pct',pct+'%');
+  }
+
+  function updateBars(yr){
+    document.querySelectorAll('.yr-bar').forEach(b=>{
+      const y=parseInt(b.dataset.year);
+      if(allMode){ b.classList.remove('active','dim'); }
+      else { b.classList.toggle('active',y===yr); b.classList.toggle('dim',y!==yr); }
+    });
+  }
+
+  function applyYear(yr){
+    const matched = allMode ? SIGHTINGS : SIGHTINGS.filter(s=>{
+      const m=s.date.match(/\b(\d{4})\b/);
+      return m && parseInt(m[1])===yr;
+    });
+    const ids=new Set(matched.map(s=>s.id));
+    Object.entries(markers).forEach(([id,{marker}])=>{
+      if(ids.has(id)){ marker.addTo(map); } else { marker.remove(); }
+    });
+    displayEl.textContent = allMode ? 'ALL' : String(yr);
+    countEl.textContent   = matched.length+' sighting'+(matched.length!==1?'s':'');
+    updateTrack(yr);
+    updateBars(yr);
+    if(window.renderHeat && window.heatActive) window.renderHeat();
+  }
+
+  sliderEl.addEventListener('input',()=>{
+    allMode=false;
+    allBtn.classList.remove('active');
+    applyYear(parseInt(sliderEl.value));
+  });
+
+  window.resetYearFilter=function(){
+    allMode=true; sliderEl.value=MIN_YR;
+    allBtn.classList.add('active');
+    applyYear(MIN_YR);
+  };
+
+  updateTrack(MIN_YR);
+  updateBars(MIN_YR);
+})();
+
+// ════════════════════════════════════════════════
+//  COUNTY COUNTS
+// ════════════════════════════════════════════════
+(function(){
+  const counts = {};
+  SIGHTINGS.forEach(s => {
+    const c = s.county.split('/')[0].trim(); // handle "Conejos/Taos" etc
+    counts[c] = (counts[c]||0) + 1;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const el = document.getElementById('county-counts');
+  const max = sorted[0][1];
+  el.innerHTML = sorted.map(([county, n])=>`
+    <div style="margin-bottom:5px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+        <span style="font-family:var(--mono);font-size:8px;color:rgba(200,216,232,0.45);letter-spacing:1px">${county.toUpperCase()}</span>
+        <span style="font-family:var(--mono);font-size:8px;color:var(--red-glow)">${n}</span>
+      </div>
+      <div style="height:2px;background:rgba(255,42,42,0.1);border-radius:1px">
+        <div style="height:2px;width:${(n/max*100).toFixed(0)}%;background:linear-gradient(90deg,var(--red),rgba(255,42,42,0.4));border-radius:1px"></div>
+      </div>
+    </div>`).join('');
+})();
+
+// ════════════════════════════════════════════════
+//  HEAT MAP OVERLAY (canvas-based)
+// ════════════════════════════════════════════════
+window.heatActive = false; window.renderHeat = null;
+let heatCanvas = null;
+
+function buildHeatCanvas(){
+  if(heatCanvas) return;
+  heatCanvas = document.createElement('canvas');
+  heatCanvas.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;z-index:3;pointer-events:none;opacity:0;transition:opacity 0.5s';
+  document.getElementById('map').appendChild(heatCanvas);
+  renderHeat();
+  map.on('moveend zoomend resize', window.renderHeat);
+}
+
+window.renderHeat = function renderHeat(){
+  if(!heatCanvas) return;
+  const w = map.getSize().x, h = map.getSize().y;
+  heatCanvas.width=w; heatCanvas.height=h;
+  const ctx = heatCanvas.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  SIGHTINGS.forEach(s=>{
+    const pt  = map.latLngToContainerPoint([s.lat,s.lng]);
+    const r   = Math.max(40, 120 - map.getZoom()*6);
+    const grd = ctx.createRadialGradient(pt.x,pt.y,0,pt.x,pt.y,r);
+    grd.addColorStop(0,   'rgba(255,60,0,0.22)');
+    grd.addColorStop(0.4, 'rgba(255,30,0,0.10)');
+    grd.addColorStop(1,   'rgba(255,0,0,0)');
+    ctx.fillStyle=grd;
+    ctx.beginPath();
+    ctx.arc(pt.x,pt.y,r,0,Math.PI*2);
+    ctx.fill();
+  });
+}
+
+window.toggleHeat = function(){
+  buildHeatCanvas();
+  heatActive=!heatActive; window.heatActive=heatActive;
+  window.heatActive = heatActive;
+  heatCanvas.style.opacity = heatActive ? '1' : '0';
+  const btn = document.getElementById('btn-heat');
+  btn.classList.toggle('on', heatActive);
+};
+
+// ════════════════════════════════════════════════
+//  RANDOM REPORT
+// ════════════════════════════════════════════════
+function randomReport(){
+  if(window.running) return;
+  const s   = SIGHTINGS[Math.floor(Math.random() * SIGHTINGS.length)];
+  const pt  = map.latLngToContainerPoint([s.lat, s.lng]);
+  map.setView([s.lat, s.lng], 12, {animate:true, duration:0.8});
+  // slight delay so map pan finishes before UFO locks on
+  setTimeout(()=>{
+    const pt2 = map.latLngToContainerPoint([s.lat, s.lng]);
+    summonUFO(s.id, pt2.x, pt2.y);
+  }, 900);
+}
 
 // ════════════════════════════════════════════════
 //  FILTER PILLS
@@ -702,6 +1037,56 @@ document.querySelectorAll('.pill').forEach(pill => {
     matchBadge.style.display='block';
   });
 });
+
+// ════════════════════════════════════════════════
+//  DRAGGABLE PANEL
+// ════════════════════════════════════════════════
+(function(){
+  const panel = document.getElementById('left-panel');
+  const grip  = document.getElementById('left-panel-grip');
+  let dragging=false, ox=0, oy=0;
+
+  grip.addEventListener('mousedown', e=>{
+    dragging=true;
+    const r=panel.getBoundingClientRect();
+    ox=e.clientX-r.left;
+    oy=e.clientY-r.top;
+    panel.style.transition='none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    let x=e.clientX-ox, y=e.clientY-oy;
+    // keep on screen
+    x=Math.max(0, Math.min(window.innerWidth-panel.offsetWidth,  x));
+    y=Math.max(0, Math.min(window.innerHeight-panel.offsetHeight, y));
+    panel.style.left   = x+'px';
+    panel.style.top    = y+'px';
+    panel.style.bottom = 'auto';
+  });
+
+  document.addEventListener('mouseup', ()=>{ dragging=false; });
+
+  // Touch support
+  grip.addEventListener('touchstart', e=>{
+    dragging=true;
+    const r=panel.getBoundingClientRect();
+    ox=e.touches[0].clientX-r.left;
+    oy=e.touches[0].clientY-r.top;
+    panel.style.transition='none';
+  },{passive:true});
+
+  document.addEventListener('touchmove', e=>{
+    if(!dragging) return;
+    let x=e.touches[0].clientX-ox, y=e.touches[0].clientY-oy;
+    x=Math.max(0, Math.min(window.innerWidth-panel.offsetWidth,  x));
+    y=Math.max(0, Math.min(window.innerHeight-panel.offsetHeight, y));
+    panel.style.left=x+'px'; panel.style.top=y+'px'; panel.style.bottom='auto';
+  },{passive:true});
+
+  document.addEventListener('touchend', ()=>{ dragging=false; });
+})();
 
 // ════════════════════════════════════════════════
 //  UFO — SUMMON & FLYBY SYSTEM
@@ -776,7 +1161,9 @@ document.querySelectorAll('.pill').forEach(pill => {
   const glowRing = document.getElementById('ufo-glow-ring');
   const ufoSvg   = wrap.querySelector('#ufo-svg');
 
-  let running = false;
+  window.running = false;
+  const runningRef = ()=>window.running;
+  const setRunning = (v)=>{ window.running=v; };
 
   function rand(a,b){ return a + Math.random()*(b-a); }
 
@@ -880,7 +1267,7 @@ document.querySelectorAll('.pill').forEach(pill => {
         const sc = 1.1 * (1-t*0.55);
         wrap.style.transform = `translate(${cx-38}px,${cy-22}px) scale(${sc})`;
         if(t<1){ requestAnimationFrame(shootOff); }
-        else   { wrap.style.display='none'; running=false; }
+        else   { wrap.style.display='none'; window.running=false; }
       }
       requestAnimationFrame(shootOff);
     }, 350);
@@ -888,15 +1275,15 @@ document.querySelectorAll('.pill').forEach(pill => {
 
   // ── PUBLIC: called by marker click ──
   window.summonUFO = function(sightingId, px, py){
-    if(running) return; // already in flight
-    running = true;
+    if(window.running) return; // already in flight
+    window.running = true;
     flyTo(px, py, sightingId, null);
   };
 
   // ── AMBIENT: random flyby every 30–60s, no panel ──
   function ambientFlyby(){
-    if(running){ return; }
-    running = true;
+    if(window.running){ return; }
+    window.running = true;
     const W=window.innerWidth, H=window.innerHeight;
     // random point in map center zone
     const tX = rand(W*0.25, W*0.75);
@@ -907,7 +1294,7 @@ document.querySelectorAll('.pill').forEach(pill => {
   // First ambient after 12s, then random interval
   setTimeout(()=>{
     ambientFlyby();
-    setInterval(()=>{ if(!running) ambientFlyby(); }, rand(30000,60000));
+    setInterval(()=>{ if(!window.running) ambientFlyby(); }, rand(30000,60000));
   }, 12000);
 
 })();
