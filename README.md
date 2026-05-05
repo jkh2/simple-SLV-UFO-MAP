@@ -4,9 +4,10 @@
 
 Built by James Keith Harwood II and Claude Sentinel (Anthropic) — a Sentinel AI Systems production.
 
-![SLV UFO Sighting Map](report.png)
+![SLV UFO Sighting Map](report.jpg)
 
 [View the Live Map](https://jkh2.github.io/simple-SLV-UFO-MAP/index.html)
+
 ---
 
 ## What Is This?
@@ -21,19 +22,29 @@ This project puts all of it on a map, in a form anyone can explore.
 
 ## Features
 
-**Cinematic Dark Map** — ESRI satellite imagery layered with a dark intelligence-style overlay, centered on the San Luis Valley. The terrain — the Sangre de Cristo mountains, the Rio Grande, the Great Sand Dunes, the Baca Ranch — is visible beneath every sighting marker.
+**Cinematic Dark Map** — ESRI satellite imagery layered with a dark intelligence-style overlay, centered on the San Luis Valley. The terrain — the Sangre de Cristo mountains, the Rio Grande, the Great Sand Dunes, the Baca Ranch — is visible beneath every sighting marker. An animated star field with a Milky Way band reinforces the nighttime atmosphere.
 
-**107 Glowing Red Markers** — Every documented sighting is pinned to its geocoded location with a custom glowing drop-pin marker. Click any pin to open a popup with location, date, and shape. One more click opens the full witness report panel.
+**107 Glowing Red Markers** — Every documented sighting is pinned to its geocoded location with a custom glowing drop-pin SVG marker. Hover any pin and it displays READ REPORT.
 
-**Full Report Panel** — Slide-in detail view for each sighting showing: witness account, date, duration, number of observers, county, and GPS coordinates.
+**🛸 UFO Reveal Animation** — Click any pin and a flying saucer screams in from a random screen edge, arcs toward that location, descends, and deploys a tractor beam. The full witness report slides open mid-beam as if the data is being pulled down from the craft. The UFO bobs, then cuts the beam and shoots away. Also appears as an ambient flyby every 30–60 seconds.
 
-**Keyword Search** — Search by any term: location name, shape description, county, date, or any word from the witness account. Matching pins shift to bright gold glow instantly. Non-matching pins remain red.
+**Full Report Panel** — Slide-in detail view showing the complete witness account, date, duration, number of observers, county, and GPS coordinates.
 
-**Filter Pills** — One-click filters for: DISC · LIGHT · SPHERE · TRIANGLE · CIGAR · FIREBALL · CATTLE (mutilation events) · 1994 · 1997 · 2000–2009 · 2010–2019 · CRESTONE · ALAMOSA · BACA.
+**🔗 Shareable Report Links** — Every report panel includes a SHARE THIS REPORT link that copies a direct URL to your clipboard. Share any sighting on Facebook and the map opens straight to it — UFO flies directly to that pin.
 
-**Match Counter** — Shows number of active matches during any search or filter.
+**Keyword Search** — Search by any term: location, shape, county, date, or any word from the witness account. Matching pins instantly shift to bright gold glow. Search results also summon the UFO to the first result.
 
-**Animated Star Field** — Procedurally animated star canvas with a Milky Way band behind the map, reinforcing the nighttime aerial aesthetic.
+**Filter Pills** — One-click filters for: DISC · LIGHT · SPHERE · TRIANGLE · CIGAR · FIREBALL · CATTLE · 1994 · 1997 · 2000–2009 · 2010–2019 · CRESTONE · ALAMOSA · BACA.
+
+**📅 Year Slider** — Single-handle slider at the bottom filters the map by year. A mini bar chart above shows sightings per year — hover any bar for the exact count, click any bar to jump to that year. ALL YEARS resets instantly.
+
+**🔥 Heat Map** — Toggle a canvas-based density overlay that renders glowing red zones where sightings cluster. Updates live when the year filter is active.
+
+**🛸 Random Report** — One click summons the UFO to a surprise sighting. The map pans to the location, the UFO flies in, and the report reveals.
+
+**📊 County Breakdown** — The control panel ranks every county by sighting count with a proportional bar chart. Saguache County's dominance is immediately visible.
+
+**Draggable Control Panel** — The controls panel (Random Report, Heat Map, legend, county chart) is fully draggable. Grab the CONTROLS grip bar and move it anywhere. Touch-enabled for mobile.
 
 ---
 
@@ -50,64 +61,61 @@ All sightings span 1994–2019 and are geocoded to the specific town, ranch, roa
 
 ## Getting More Recent Data (2019–Present)
 
-The dataset currently covers 1994–2019. Here are the best paths to extend it:
-
 **NUFORC Databank (free, browsable)**
-NUFORC's public databank at [nuforc.org/databank](https://nuforc.org/databank/) is actively updated and freely browsable. You can search by state and city to find SLV-area reports from 2019 to present. To add them to this map, filter for Colorado towns in the valley (Alamosa, Saguache, Monte Vista, Crestone, Center, Del Norte, Antonito, Blanca, Fort Garland) and add entries to the `SIGHTINGS` array in `index.html`.
+NUFORC's public databank at [nuforc.org/databank](https://nuforc.org/databank/) is actively updated. Search by state and city for SLV towns: Alamosa, Saguache, Monte Vista, Crestone, Center, Del Norte, Antonito, Blanca, Fort Garland. Add findings to the `SIGHTINGS` array in `index.html`.
 
 **NUFORC Data Request**
-NUFORC's terms of service prohibit scraping, but they grant data access for research purposes. Email their team directly at nuforc.org to request a Colorado data export for research use. Reference this project as a public-interest educational tool.
+NUFORC prohibits scraping but grants research access. Email them at nuforc.org referencing this project as a public-interest educational tool.
 
 **MUFON Database**
-The Mutual UFO Network (mufon.com) maintains a parallel investigation database with its own SLV reports, some with higher detail than NUFORC entries. Membership provides data access.
-
-**Community Reports**
-The v1 of this project included a user-submission form allowing valley residents to submit their own sightings directly to the map. That feature can be re-enabled — reach out if you witnessed something and want it documented.
+The Mutual UFO Network (mufon.com) maintains a parallel database with its own SLV reports. Membership provides data access.
 
 ---
 
 ## Running Locally
 
-No build step. No dependencies to install. It's a single HTML file.
+No build step. No dependencies. Single HTML file.
 
 ```bash
-git clone https://github.com/jkh2/simple-SLV-UFO-MAP-V2
-cd simple-SLV-UFO-MAP-V2
+git clone https://github.com/jkh2/simple-SLV-UFO-MAP
+cd simple-SLV-UFO-MAP
 # Open index.html in any modern browser
 ```
-
-Or just open `index.html` directly. Everything runs client-side.
 
 ---
 
 ## Adding Sightings
 
-Each sighting entry in the `SIGHTINGS` array in `index.html` follows this structure:
+Each entry in the `SIGHTINGS` array in `index.html`:
 
 ```javascript
 {
-  id:        "D108",                          // Sequential ID
-  lat:       37.47,                           // Latitude (decimal degrees)
-  lng:       -105.87,                         // Longitude (decimal degrees)
-  location:  "Alamosa, CO",                   // Location description
-  date:      "March 15, 2022",               // Date of sighting
-  shape:     "Triangle",                      // Object shape
-  duration:  "~10 min",                       // Estimated duration
-  observers: "3",                             // Number of witnesses
-  county:    "Alamosa",                       // County name
-  summary:   "Full witness account here..."  // Description
+  id:        "D108",
+  lat:       37.47,
+  lng:       -105.87,
+  location:  "Alamosa, CO",
+  date:      "March 15, 2022",
+  shape:     "Triangle",
+  duration:  "~10 min",
+  observers: "3",
+  county:    "Alamosa",
+  summary:   "Full witness account here..."
 }
 ```
 
-Add your entry to the array, save, and refresh. The pin appears immediately.
+Add the entry, save, refresh. The pin appears immediately with full UFO interaction.
+
+---
+
+## Community
+
+This map is offered as a resource to the San Luis Valley community — especially the members of **[Everything SLV](https://www.facebook.com/groups/645890198862657)** on Facebook, whose group has kept the spirit and stories of the valley alive. A small tribute in the corner of the map is the least we could do.
 
 ---
 
 ## Project History
 
-This is the second version of the SLV UFO Sighting Map. The original (v1) was built in March 2025 with full AI integration — an on-map analyst powered by OpenRouter that could answer questions about sighting patterns across the dataset.
-
-This version (v2, May 2026) is intentionally clean — no AI integration, no backend, no accounts. Just the data, the map, and the glowing pins. Built for speed, simplicity, and longevity.
+This is the second version of the SLV UFO Sighting Map. The original (v1, March 2025) featured full AI integration — an on-map analyst powered by OpenRouter. This version (v2, May 2026) is intentionally clean — no AI, no backend, no accounts. Just the data, the map, the glowing pins, and a flying saucer that delivers the reports.
 
 Both versions were built through the Sentinel AI Systems human-AI partnership framework.
 
