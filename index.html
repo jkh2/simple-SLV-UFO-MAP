@@ -1196,7 +1196,7 @@ document.querySelectorAll('.pill').forEach(pill => {
       const t   = Math.min((now-t0)/flyDur, 1);
       const e   = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
       const bx  = (1-e)*(1-e)*startX + 2*(1-e)*e*midX + e*e*tX;
-      const by  = (1-e)*(1-e)*startY + 2*(1-e)*e*midY + e*e*(tY-85);
+      const by  = (1-e)*(1-e)*startY + 2*(1-e)*e*midY + e*e*(tY-138);
       const sc  = 0.55 + e*0.55;
       wrap.style.transform = `translate(${bx-38}px,${by-22}px) scale(${sc})`;
       if(t<1){ requestAnimationFrame(flyIn); }
@@ -1209,7 +1209,7 @@ document.querySelectorAll('.pill').forEach(pill => {
     // JS-controlled bob — keeps full transform control, no CSS animation conflict
     let bobStart = null;
     let bobFrame = null;
-    const hoverY = tY - 107;
+    const hoverY = tY - 138;  // beam tip = hoverY + 38 + 100 = hoverY + 138 = tY
 
     function bob(now){
       if(!bobStart) bobStart = now;
