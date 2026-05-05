@@ -1095,7 +1095,7 @@ document.querySelectorAll('.pill').forEach(pill => {
   const style = document.createElement('style');
   style.textContent = `
     #ufo-wrap {
-      position:fixed; z-index:50; pointer-events:none;
+      position:fixed; top:0; left:0; z-index:50; pointer-events:none;
       will-change:transform; display:none;
     }
     #ufo-svg { filter:drop-shadow(0 0 8px #00eeff) drop-shadow(0 0 20px rgba(0,200,255,0.5)); }
@@ -1196,9 +1196,9 @@ document.querySelectorAll('.pill').forEach(pill => {
       const t   = Math.min((now-t0)/flyDur, 1);
       const e   = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
       const bx  = (1-e)*(1-e)*startX + 2*(1-e)*e*midX + e*e*tX;
-      const by  = (1-e)*(1-e)*startY + 2*(1-e)*e*midY + e*e*(tY-138);
-      const sc  = 0.55 + e*0.55;
-      wrap.style.transform = `translate(${bx-38}px,${by-22}px) scale(${sc})`;
+      const by  = (1-e)*(1-e)*startY + 2*(1-e)*e*midY + e*e*(tY);
+      const sc  = 0.45 + e*0.55;
+      wrap.style.transform = `translate(${bx-38}px,${by-138}px) scale(${sc})`;
       if(t<1){ requestAnimationFrame(flyIn); }
       else   { arrive(tX, tY, targetId, onArrival); }
     }
@@ -1215,7 +1215,7 @@ document.querySelectorAll('.pill').forEach(pill => {
       if(!bobStart) bobStart = now;
       const elapsed = now - bobStart;
       const offsetY = Math.sin(elapsed / 600 * Math.PI) * 6;
-      wrap.style.transform = `translate(${tX-38}px,${hoverY + offsetY}px) scale(1.1)`;
+      wrap.style.transform = `translate(${tX-38}px,${hoverY + offsetY}px)`;
       bobFrame = requestAnimationFrame(bob);
     }
     bobFrame = requestAnimationFrame(bob);
@@ -1235,7 +1235,7 @@ document.querySelectorAll('.pill').forEach(pill => {
       const hoverDur = targetId ? rand(3500,5000) : rand(2000,3000);
       setTimeout(()=>{
         cancelAnimationFrame(bobFrame);
-        depart(tX, tY);
+        depart(tX, tY-138);
       }, hoverDur);
 
     }, 300);
@@ -1257,7 +1257,7 @@ document.querySelectorAll('.pill').forEach(pill => {
 
       const depDur = rand(900,1600);
       const t0 = performance.now();
-      const startX = fromX, startY = fromY-85;
+      const startX = fromX, startY = fromY;
 
       function shootOff(now){
         const t  = Math.min((now-t0)/depDur, 1);
