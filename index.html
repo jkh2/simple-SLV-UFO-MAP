@@ -687,6 +687,212 @@ document.querySelectorAll('.pill').forEach(pill => {
     matchBadge.style.display='block';
   });
 });
+
+// ════════════════════════════════════════════════
+//  UFO FLYBY ANIMATION
+// ════════════════════════════════════════════════
+(function(){
+  // Inject UFO element and styles
+  const style = document.createElement('style');
+  style.textContent = `
+    #ufo-wrap {
+      position:fixed; z-index:50; pointer-events:none;
+      will-change:transform; display:none;
+    }
+    #ufo-svg { filter:drop-shadow(0 0 8px #00eeff) drop-shadow(0 0 20px rgba(0,200,255,0.5)); }
+    #ufo-beam {
+      position:absolute; left:50%; transform:translateX(-50%);
+      top:38px; width:0; height:0;
+      border-left:18px solid transparent;
+      border-right:18px solid transparent;
+      border-top:0px solid rgba(100,255,200,0.0);
+      transition:border-top-width 0.4s ease, border-top-color 0.4s ease;
+      pointer-events:none;
+    }
+    #ufo-beam.on {
+      border-top-width:80px;
+      border-top-color:rgba(100,255,200,0.18);
+    }
+    #ufo-glow-ring {
+      position:absolute; left:50%; top:22px;
+      transform:translateX(-50%);
+      width:64px; height:10px; border-radius:50%;
+      background:rgba(0,220,255,0.0);
+      box-shadow:none;
+      transition:background 0.4s, box-shadow 0.4s;
+    }
+    #ufo-glow-ring.on {
+      background:rgba(0,220,255,0.15);
+      box-shadow:0 0 20px 8px rgba(0,200,255,0.25);
+    }
+  `;
+  document.head.appendChild(style);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'ufo-wrap';
+  wrap.innerHTML = `
+    <div id="ufo-glow-ring"></div>
+    <svg id="ufo-svg" width="72" height="42" viewBox="0 0 72 42" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="domeG" cx="50%" cy="60%" r="55%">
+          <stop offset="0%" stop-color="#aaf0ff"/>
+          <stop offset="100%" stop-color="#0088bb"/>
+        </radialGradient>
+        <radialGradient id="bodyG" cx="50%" cy="40%" r="60%">
+          <stop offset="0%" stop-color="#cccccc"/>
+          <stop offset="60%" stop-color="#888888"/>
+          <stop offset="100%" stop-color="#444444"/>
+        </radialGradient>
+        <radialGradient id="rimG" cx="50%" cy="40%" r="55%">
+          <stop offset="0%" stop-color="#bbddff"/>
+          <stop offset="100%" stop-color="#334466"/>
+        </radialGradient>
+      </defs>
+      <!-- body disc -->
+      <ellipse cx="36" cy="28" rx="34" ry="10" fill="url(#bodyG)"/>
+      <!-- rim ring -->
+      <ellipse cx="36" cy="27" rx="34" ry="5" fill="none" stroke="url(#rimG)" stroke-width="2" opacity="0.7"/>
+      <!-- dome -->
+      <ellipse cx="36" cy="22" rx="16" ry="12" fill="url(#domeG)" opacity="0.92"/>
+      <!-- dome highlight -->
+      <ellipse cx="32" cy="18" rx="6" ry="4" fill="white" opacity="0.25"/>
+      <!-- rim lights -->
+      <circle cx="14" cy="28" r="2.2" fill="#ff4444" opacity="0.9"/>
+      <circle cx="24" cy="31" r="2.2" fill="#44ff88" opacity="0.9"/>
+      <circle cx="36" cy="32" r="2.2" fill="#4488ff" opacity="0.9"/>
+      <circle cx="48" cy="31" r="2.2" fill="#ffcc00" opacity="0.9"/>
+      <circle cx="58" cy="28" r="2.2" fill="#ff4444" opacity="0.9"/>
+      <!-- underside -->
+      <ellipse cx="36" cy="34" rx="20" ry="4" fill="#222" opacity="0.5"/>
+    </svg>
+    <div id="ufo-beam"></div>
+  `;
+  document.body.appendChild(wrap);
+
+  const beam     = document.getElementById('ufo-beam');
+  const glowRing = document.getElementById('ufo-glow-ring');
+
+  let running = false;
+
+  function rand(a,b){ return a + Math.random()*(b-a); }
+
+  function pickTarget(){
+    // Pick a random sighting lat/lng and convert to screen pixel
+    const s = SIGHTINGS[Math.floor(Math.random()*SIGHTINGS.length)];
+    const pt = map.latLngToContainerPoint([s.lat, s.lng]);
+    return { x: pt.x, y: pt.y, sighting: s };
+  }
+
+  function flySequence(){
+    if(running) return;
+    running = true;
+
+    const W = window.innerWidth, H = window.innerHeight;
+
+    // Entry: random edge
+    const edge = Math.floor(rand(0,4)); // 0=left, 1=right, 2=top, 3=bottom
+    let startX, startY, scaleDir;
+    if(edge===0){ startX=-80; startY=rand(80,H*0.7); scaleDir=1; }
+    else if(edge===1){ startX=W+80; startY=rand(80,H*0.7); scaleDir=-1; }
+    else if(edge===2){ startX=rand(W*0.2,W*0.8); startY=-60; scaleDir=1; }
+    else { startX=rand(W*0.2,W*0.8); startY=H+60; scaleDir=1; }
+
+    const target = pickTarget();
+    const tX = target.x, tY = target.y;
+
+    wrap.style.display = 'block';
+    wrap.style.left = '0px';
+    wrap.style.top  = '0px';
+    beam.classList.remove('on');
+    glowRing.classList.remove('on');
+
+    // Flip SVG based on direction
+    const goingLeft = tX < startX;
+    wrap.querySelector('#ufo-svg').style.transform = goingLeft ? 'scaleX(-1)' : 'scaleX(1)';
+
+    const duration = rand(3500, 5500); // ms to reach target
+    const startTime = performance.now();
+
+    // PHASE 1: fly to target
+    function flyIn(now){
+      const t = Math.min((now - startTime) / duration, 1);
+      const ease = t<0.5 ? 2*t*t : -1+(4-2*t)*t; // ease in-out quad
+      // gentle arc via bezier-ish midpoint
+      const midX = (startX + tX)*0.5 + rand(-80,80);
+      const midY = Math.min(startY, tY) - rand(40,120);
+      const bx = (1-ease)*(1-ease)*startX + 2*(1-ease)*ease*midX + ease*ease*tX;
+      const by = (1-ease)*(1-ease)*startY + 2*(1-ease)*ease*midY + ease*ease*tY;
+      wrap.style.transform = `translate(${bx-36}px, ${by-21}px) scale(${0.6 + ease*0.5})`;
+
+      if(t < 1){ requestAnimationFrame(flyIn); }
+      else { hover(); }
+    }
+
+    // PHASE 2: hover with beam
+    function hover(){
+      wrap.style.transform = `translate(${tX-36}px, ${tY-80}px) scale(1.1)`;
+      beam.classList.add('on');
+      glowRing.classList.add('on');
+
+      // gentle bob while hovering
+      const hoverStart = performance.now();
+      const hoverDur   = rand(2200, 3800);
+      function bob(now){
+        const ht = (now - hoverStart) / hoverDur;
+        if(ht >= 1){ depart(); return; }
+        const bobY = Math.sin(ht * Math.PI * 4) * 6;
+        wrap.style.transform = `translate(${tX-36}px, ${tY-80+bobY}px) scale(1.1)`;
+        requestAnimationFrame(bob);
+      }
+      requestAnimationFrame(bob);
+    }
+
+    // PHASE 3: beam off, shoot away
+    function depart(){
+      beam.classList.remove('on');
+      glowRing.classList.remove('on');
+
+      setTimeout(()=>{
+        // Pick exit edge opposite from entry roughly
+        let exitX, exitY;
+        const roll = Math.random();
+        if(roll < 0.33){ exitX = -100; exitY = rand(0, H*0.6); }
+        else if(roll < 0.66){ exitX = W+100; exitY = rand(0, H*0.6); }
+        else { exitX = rand(0, W); exitY = -100; }
+
+        const departDur  = rand(1200, 2000);
+        const departStart = performance.now();
+        const fromX = tX, fromY = tY-80;
+        const exitFlip = exitX < fromX;
+        wrap.querySelector('#ufo-svg').style.transform = exitFlip ? 'scaleX(-1)' : 'scaleX(1)';
+
+        function shootOff(now){
+          const t = Math.min((now - departStart) / departDur, 1);
+          const ease = t*t*t; // ease in — accelerate away
+          const cx = fromX + (exitX - fromX)*ease;
+          const cy = fromY + (exitY - fromY)*ease;
+          const sc  = 1.1 * (1 - t*0.5);
+          wrap.style.transform = `translate(${cx-36}px, ${cy-21}px) scale(${sc})`;
+          if(t < 1){ requestAnimationFrame(shootOff); }
+          else {
+            wrap.style.display='none';
+            running = false;
+          }
+        }
+        requestAnimationFrame(shootOff);
+      }, 400);
+    }
+
+    requestAnimationFrame(flyIn);
+  }
+
+  // First flyby after 8s, then random interval 25–55s
+  setTimeout(()=>{
+    flySequence();
+    setInterval(()=>{ if(!running) flySequence(); }, rand(25000, 55000));
+  }, 8000);
+
+})();
 </script>
 </body>
 </html>
